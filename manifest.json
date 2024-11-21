@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "ferheader",
+  "version": "1.0",
+  "description": "Simple mod header for personal use",
+  "permissions": [],
+  "action": {
+    "default_popup": "popup.html"
+  },
+    "host_permissions": ["<all_urls>"]
+}

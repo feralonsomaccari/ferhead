@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES6",                       // Good choice for modern JavaScript.
+    "module": "ESNext",                     // For modern module system.
+    "moduleResolution": "node",             // Helps TypeScript resolve modules.
+    "strict": true,                         // Enables strict type-checking options.
+    "esModuleInterop": true,                // Ensures compatibility with common JS imports.
+    "outDir": "./dist",                     // Compiled JS files will go here.
+    "skipLibCheck": true,                   // Skip library checks for faster builds (optional).
+    "forceConsistentCasingInFileNames": true // Ensures consistent file name casing.
+  },
+  "include": [
+    "src/**/*.ts"                           // Include all TypeScript files in the 'src' folder.
+  ],
+  "exclude": [
+    "node_modules"                          // Exclude the 'node_modules' folder from compilation.
+  ]
+}
