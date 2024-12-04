@@ -6,7 +6,7 @@
   "keywords": [],
   "author": "feralonsomaccari",
   "devDependencies": {
+    "@types/chrome": "^0.0.284",
     "typescript": "^4.5.4"
   }
 }
-

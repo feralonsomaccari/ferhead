@@ -1,6 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("Popup loaded.");
-
   const checkbox1 =
     document.querySelector<HTMLInputElement>("#headerCheckbox1");
   const checkbox2 =
@@ -19,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     switch (event.key) {
       case "1":
         checkbox1.checked = !checkbox1.checked;
+        checkbox1.dispatchEvent(new Event("change"));
         break;
       case "2":
         checkbox2.checked = !checkbox2.checked;
@@ -31,6 +30,16 @@ document.addEventListener("DOMContentLoaded", () => {
         break;
 
       default:
+    }
+  });
+
+  checkbox1.addEventListener("change", () => {
+    if (checkbox1.checked) {
+      // Send message to background script to enable header modification
+      chrome.runtime.sendMessage({ addHeader: true });
+    } else {
+      // Send message to background script to disable header modification
+      chrome.runtime.sendMessage({ addHeader: false });
     }
   });
 });
