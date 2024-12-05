@@ -1,18 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Header Modifier",
+  "name": "ferheader",
   "version": "1.0",
   "permissions": [
-    "<all_urls>",
     "webRequest",
-    "webRequestBlocking",
     "activeTab",
-    "declarativeNetRequest"
+    "declarativeNetRequest",
+    "storage"
   ],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
-    "service_worker": "/dist/background.js",
-    "persistent": true
+    "service_worker": "/dist/background.js"
   },
   "action": {
     "default_popup": "popup.html"

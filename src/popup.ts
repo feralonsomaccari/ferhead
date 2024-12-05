@@ -1,45 +1,56 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const checkbox1 =
-    document.querySelector<HTMLInputElement>("#headerCheckbox1");
-  const checkbox2 =
-    document.querySelector<HTMLInputElement>("#headerCheckbox2");
-  const checkbox3 =
-    document.querySelector<HTMLInputElement>("#headerCheckbox3");
-  const checkbox4 =
-    document.querySelector<HTMLInputElement>("#headerCheckbox4");
+const checkboxes: Record<string, boolean> = {};
 
-  if (!checkbox1 || !checkbox2 || !checkbox3 || !checkbox4) {
-    console.error("missing checkbox");
+document.addEventListener("DOMContentLoaded", () => {
+  const checkboxIds = [
+    "headerCheckbox1",
+    "headerCheckbox2",
+    "headerCheckbox3",
+    "headerCheckbox4",
+  ];
+
+  const checkboxElements = checkboxIds.map((id) =>
+    document.querySelector<HTMLInputElement>(`#${id}`),
+  );
+
+  // Check if any checkbox is missing
+  if (checkboxElements.some((checkbox) => !checkbox)) {
+    console.error("One or more checkboxes are missing.");
     return;
   }
 
-  document.addEventListener("keydown", (event) => {
-    switch (event.key) {
-      case "1":
-        checkbox1.checked = !checkbox1.checked;
-        checkbox1.dispatchEvent(new Event("change"));
-        break;
-      case "2":
-        checkbox2.checked = !checkbox2.checked;
-        break;
-      case "3":
-        checkbox3.checked = !checkbox3.checked;
-        break;
-      case "4":
-        checkbox4.checked = !checkbox4.checked;
-        break;
-
-      default:
+  // Load saved states from storage
+  chrome.storage.local.get(["checkboxes"], (result) => {
+    if (result.checkboxes) {
+      Object.assign(checkboxes, result.checkboxes);
+      checkboxElements.forEach((checkbox, index) => {
+        if (!checkbox) return;
+        const key = `checkbox${index + 1}`;
+        checkbox.checked = checkboxes[key] || false;
+      });
     }
   });
 
-  checkbox1.addEventListener("change", () => {
-    if (checkbox1.checked) {
-      // Send message to background script to enable header modification
-      chrome.runtime.sendMessage({ addHeader: true });
-    } else {
-      // Send message to background script to disable header modification
-      chrome.runtime.sendMessage({ addHeader: false });
+  // Handle keydown events
+  document.addEventListener("keydown", (event) => {
+    const key = parseInt(event.key, 10);
+    if (key >= 1 && key <= checkboxElements.length) {
+      const checkbox = checkboxElements[key - 1];
+      if (!checkbox) return;
+      checkbox.checked = !checkbox.checked;
+      checkbox.dispatchEvent(new Event("change"));
     }
+  });
+
+  // Add event listeners for all checkboxes
+  checkboxElements.forEach((checkbox, index) => {
+    if (!checkbox) return;
+    const key = `checkbox${index + 1}`;
+    checkbox.addEventListener("change", () => {
+      checkboxes[key] = checkbox.checked;
+      chrome.runtime.sendMessage({
+        addHeader: checkbox.checked && key === "checkbox1",
+      });
+      chrome.storage.local.set({ checkboxes });
+    });
   });
 });
