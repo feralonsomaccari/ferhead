@@ -1,5 +1,5 @@
 :root {
-  --primary-color: lightsalmon;
+  --primary-color: #37a1ce;
   --secondary-color: #cc7a5a;
   --primary-bg: #1e1e1e;
 }
@@ -11,29 +11,32 @@ html {
 body {
   padding: 8px;
   background-color: var(--primary-bg);
-  border: 1px dotted var(--primary-color);
+  border: 1px dotted lightgray;
+  margin-top: 16px;
 }
 
 h1 {
   margin-top: 0;
   margin-left: 0;
   color: var(--primary-color);
-  margin-left: 4px;
-  border-bottom: 1px dotted var(--primary-color);
-  width: 158px;
+  width: 150px;
   padding-bottom: 4px;
-  border-right: 1px dotted var(--primary-color);
+  position: relative;
+  bottom: 22px;
+  background: #1e1e1e;
+  padding: 0 10px;
+  margin: 0;
 }
 
 .header-wrapper {
   display: flex;
   gap: 8px;
-  height: 32px;
+  height: 35px;
   align-items: center;
 }
 
 .header-title {
-  color: var(--primary-color);
+  color: lightgray;
 }
 
 .header-title-first {
@@ -47,8 +50,8 @@ h1 {
 .paramInput {
   padding: 0;
   padding-bottom: 4px;
-  width: 350px;
-  font-size: 15px;
+  width: 320px;
+  font-size: 16px;
   background-color: var(--primary-bg);
   color: lightgray;
   border: none;
@@ -57,11 +60,17 @@ h1 {
 }
 
 .param-value {
-  width: 450px;
+  width: 370px;
+  margin-left: 10px;
+}
+
+.param-container {
+  display: flex;
+  flex-wrap: wrap;
 }
 
 input[type="checkbox"] {
-  width: 27px;
+  width: 24px;
   height: 24px;
   border: 2px solid gray;
   border-radius: 4px;
@@ -70,21 +79,29 @@ input[type="checkbox"] {
   accent-color: var(--primary-color);
   appearance: none;
   background-color: var(--primary-bg);
-  margin-bottom: 0px;
-  margin-top: 0px;
-}
-
-input[type="checkbox"]:before {
-  background-color: #00aeef;
+  margin-bottom: 0;
+  margin-top: 0;
+  position: relative;
+  border-style: dotted;
 }
 
 input[type="checkbox"]:checked {
   background-color: var(--primary-color);
   border-color: var(--primary-bg);
+  border-style: dotted;
+}
+
+input[type="checkbox"]:checked::after {
+  content: "\2713";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 16px;
+  color: white;
 }
 
 input[type="checkbox"]:focus {
   outline: none;
   box-shadow: 0 0 0 2px #4d4d4d;
-  height: 24px;
 }
