@@ -6,6 +6,8 @@ document.addEventListener("DOMContentLoaded", () => {
     "headerCheckbox2",
     "headerCheckbox3",
     "headerCheckbox4",
+    "headerCheckbox5",
+    "headerCheckbox6",
   ];
 
   const checkboxElements = checkboxIds.map((id) =>
@@ -14,7 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const inputElements = checkboxIds.map((id, index) => [
     document.querySelector<HTMLInputElement>(`#paramHeader${index + 1}`),
-    document.querySelector<HTMLInputElement>(`#paramName${index + 1}`),
+    document.querySelector<HTMLInputElement>(`#paramValue${index + 1}`),
   ]);
 
   // Check if any checkbox is missing
@@ -43,9 +45,82 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Handle keydown events
   document.addEventListener("keydown", (event) => {
+    const activeElement = document.activeElement;
     const key = parseInt(event.key, 10);
+
+    if (event.key === "Escape" && activeElement instanceof HTMLInputElement) {
+      if (activeElement.selectionStart !== activeElement.selectionEnd) {
+        activeElement.setSelectionRange(
+          activeElement.selectionStart,
+          activeElement.selectionStart,
+        );
+      }
+
+      activeElement.blur();
+      event.preventDefault();
+    }
+
+    if (event.shiftKey && /^Digit[1-4]$/.test(event.code)) {
+      event.preventDefault();
+
+      const keyNumber = parseInt(event.code.replace("Digit", ""), 10);
+      const paramHeaderInputId = `paramValue${keyNumber}`;
+      const secondInput = document.querySelector<HTMLInputElement>(
+        `#${paramHeaderInputId}`,
+      );
+
+      if (secondInput) {
+        const pattern = new RegExp(`-pr\\d+-`, "g");
+        const match = secondInput.value.match(pattern);
+
+        if (match) {
+          const startIndex = secondInput.value.indexOf(match[0]) + 3;
+          const endIndex = startIndex + match[0].slice(4).length;
+          secondInput.focus();
+          secondInput.setSelectionRange(startIndex, endIndex);
+        }
+      }
+      return;
+    }
+
+    // Handle only numeric input when a number is selected
+    if (
+      activeElement instanceof HTMLInputElement &&
+      activeElement.selectionStart !== activeElement.selectionEnd &&
+      activeElement.id.startsWith("paramValue")
+    ) {
+      // Allow cut, copy, and paste commands
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        (event.key === "c" || event.key === "x" || event.key === "v")
+      ) {
+        return; // Allow Ctrl+C, Ctrl+X, and Ctrl+V to pass through
+      }
+
+      // Allow only numbers (0-9)
+      if (
+        !/^\d$/.test(event.key) &&
+        event.key !== "Backspace" &&
+        event.key !== "Delete" &&
+        event.key !== "ArrowLeft" &&
+        event.key !== "ArrowRight" &&
+        event.key !== "Tab"
+      ) {
+        event.preventDefault();
+      }
+    }
+
+    // After here it sohuld only affect checkboxes
+    if (
+      activeElement instanceof HTMLInputElement &&
+      activeElement.type === "text" &&
+      activeElement.id.startsWith("paramValue")
+    ) {
+      return;
+    }
+
+    // Check box Listener
     if (key >= 1 && key <= checkboxElements.length) {
       const checkbox = checkboxElements[key - 1];
       if (!checkbox) return;
