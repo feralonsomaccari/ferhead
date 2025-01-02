@@ -21,10 +21,15 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelector<HTMLInputElement>(`#paramValue-${index + 1}`),
   ]);
 
-  // Check if any checkbox is missing
+  const copyButtons = checkboxIds.map((id, index) =>
+    document.querySelector<HTMLButtonElement>(`#paramCopy-${index + 1}`),
+  );
+
+  // Check if any element is missing
   if (
     checkboxElements.some((checkbox) => !checkbox) ||
-    inputElements.some(([inputA, inputB]) => !inputA || !inputB)
+    inputElements.some(([inputA, inputB]) => !inputA || !inputB) ||
+    copyButtons.some((copyButton) => !copyButton)
   ) {
     console.error("One or more elements are missing.");
     return;
@@ -47,7 +52,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-
   // Handle changes to param value when the checkbox is active
   document.addEventListener("input", (event) => {
     const activeElement = document.activeElement;
@@ -69,7 +73,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   });
-
 
   document.addEventListener("keydown", (event) => {
     const activeElement = document.activeElement;
@@ -189,6 +192,24 @@ document.addEventListener("DOMContentLoaded", () => {
         checkboxes[key].inputs[inputIndex] = input.value;
         chrome.storage.local.set({ checkboxes });
       });
+    });
+  });
+
+  copyButtons.forEach((copyButton, index) => {
+    const key = `paramCopy-${index + 1}`;
+    const [inputA, inputB] = inputElements[index];
+    if (!copyButton || !inputA || !inputB) return;
+    copyButton.addEventListener("click", () => {
+      const createQueryParam = `?${inputA.value}=${inputB.value}`;
+      // Copy to clipboard
+      navigator.clipboard
+        .writeText(createQueryParam)
+        .then(() => {
+          console.log("Copied to clipboard:", createQueryParam);
+        })
+        .catch((err) => {
+          console.error("Failed to copy:", err);
+        });
     });
   });
 });
