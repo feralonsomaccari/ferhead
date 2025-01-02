@@ -47,6 +47,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+
+  // Handle changes to param value when the checkbox is active
   document.addEventListener("input", (event) => {
     const activeElement = document.activeElement;
     if (
@@ -60,13 +62,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (inputA && inputB && checkbox?.checked) {
         chrome.runtime.sendMessage({
           addHeader: true,
-          id: paramId + 1,
+          id: paramId,
           header: inputA.value,
           value: inputB.value,
         });
       }
     }
   });
+
 
   document.addEventListener("keydown", (event) => {
     const activeElement = document.activeElement;

@@ -2,8 +2,8 @@ chrome.runtime.onMessage.addListener((message: { addHeader?: boolean, id: number
 
   if (message.addHeader !== undefined) {
     if (message.addHeader) {
-
-     if(!message.id || !message.header || !message.value) {
+     if((message.id === undefined || message.id === null) || !message.header || !message.value) {
+        console.log(message);
         console.error("missing params");
         return;
       }
@@ -53,7 +53,7 @@ chrome.runtime.onMessage.addListener((message: { addHeader?: boolean, id: number
               },
             },
           ],
-          removeRuleIds: [],
+          removeRuleIds: [message.id],
         },
         () => {
           console.log("Header rule added.");
