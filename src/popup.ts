@@ -1,3 +1,5 @@
+let pepe = "asdasdasd";
+
 const checkboxes: Record<string, { checked: boolean; inputs: string[] }> = {};
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -15,8 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 
   const inputElements = checkboxIds.map((id, index) => [
-    document.querySelector<HTMLInputElement>(`#paramHeader${index + 1}`),
-    document.querySelector<HTMLInputElement>(`#paramValue${index + 1}`),
+    document.querySelector<HTMLInputElement>(`#paramHeader-${index + 1}`),
+    document.querySelector<HTMLInputElement>(`#paramValue-${index + 1}`),
   ]);
 
   // Check if any checkbox is missing
@@ -45,6 +47,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  document.addEventListener("input", (event) => {
+    const activeElement = document.activeElement;
+    if (
+      activeElement instanceof HTMLInputElement &&
+      activeElement.id.startsWith("paramValue")
+    ) {
+      event.preventDefault();
+      const paramId = parseInt(activeElement?.id.split("-")[1]);
+      const [inputA, inputB] = inputElements[paramId - 1];
+      const checkbox = checkboxElements[paramId - 1];
+      if (inputA && inputB && checkbox?.checked) {
+        chrome.runtime.sendMessage({
+          addHeader: true,
+          id: paramId + 1,
+          header: inputA.value,
+          value: inputB.value,
+        });
+      }
+    }
+  });
+
   document.addEventListener("keydown", (event) => {
     const activeElement = document.activeElement;
     const key = parseInt(event.key, 10);
@@ -65,7 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
       event.preventDefault();
 
       const keyNumber = parseInt(event.code.replace("Digit", ""), 10);
-      const paramHeaderInputId = `paramValue${keyNumber}`;
+      const paramHeaderInputId = `paramValue-${keyNumber}`;
       const secondInput = document.querySelector<HTMLInputElement>(
         `#${paramHeaderInputId}`,
       );
@@ -142,6 +165,17 @@ document.addEventListener("DOMContentLoaded", () => {
         inputs: [inputA.value, inputB.value],
       };
       chrome.storage.local.set({ checkboxes });
+
+      if (checkbox.checked) {
+        chrome.runtime.sendMessage({
+          addHeader: true,
+          id: index + 1,
+          header: inputA.value,
+          value: inputB.value,
+        });
+      } else {
+        chrome.runtime.sendMessage({ addHeader: false, id: index + 1 });
+      }
     });
 
     [inputA, inputB].forEach((input, inputIndex) => {
