@@ -1,4 +1,13 @@
-let pepe = "asdasdasd";
+const copyToClipboard = (text: string) => {
+  navigator.clipboard
+    .writeText(text)
+    .then(() => {
+      console.log("Copied to clipboard:", text);
+    })
+    .catch((err) => {
+      console.error("Failed to copy:", err);
+    });
+};
 
 const checkboxes: Record<string, { checked: boolean; inputs: string[] }> = {};
 
@@ -25,11 +34,16 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelector<HTMLButtonElement>(`#paramCopy-${index + 1}`),
   );
 
+  const copyButtonsWithUrl = checkboxIds.map((id, index) =>
+    document.querySelector<HTMLButtonElement>(`#paramCopyWithUrl-${index + 1}`),
+  );
+
   // Check if any element is missing
   if (
     checkboxElements.some((checkbox) => !checkbox) ||
     inputElements.some(([inputA, inputB]) => !inputA || !inputB) ||
-    copyButtons.some((copyButton) => !copyButton)
+    copyButtons.some((copyButton) => !copyButton) ||
+    copyButtonsWithUrl.some((copyButton) => !copyButton)
   ) {
     console.error("One or more elements are missing.");
     return;
@@ -195,21 +209,33 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  copyButtons.forEach((copyButton, index) => {
-    const key = `paramCopy-${index + 1}`;
+  copyButtons.forEach((buttonEl, index) => {
     const [inputA, inputB] = inputElements[index];
-    if (!copyButton || !inputA || !inputB) return;
-    copyButton.addEventListener("click", () => {
+    if (!buttonEl || !inputA || !inputB) return;
+    buttonEl.addEventListener("click", () => {
       const createQueryParam = `?${inputA.value}=${inputB.value}`;
-      // Copy to clipboard
-      navigator.clipboard
-        .writeText(createQueryParam)
-        .then(() => {
-          console.log("Copied to clipboard:", createQueryParam);
-        })
-        .catch((err) => {
-          console.error("Failed to copy:", err);
-        });
+      copyToClipboard(createQueryParam);
     });
   });
+
+  copyButtonsWithUrl.forEach((buttonEl, index) => {
+    const [inputA, inputB] = inputElements[index];
+    if (!buttonEl || !inputA || !inputB) return;
+
+    buttonEl.addEventListener("click", () => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const activeTab = tabs[0];
+        if (!activeTab || !activeTab.url) {
+          console.error("Unable to retrieve the active tab's URL");
+          return;
+        }
+        const url = new URL(activeTab.url);
+        url.searchParams.set(inputA.value, inputB.value);
+        const fullUrl = url.toString();
+        copyToClipboard(fullUrl);
+      });
+    });
+  });
+
 });
+

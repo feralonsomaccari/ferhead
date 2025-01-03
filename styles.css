@@ -51,7 +51,7 @@ h1 {
 .paramInput {
   padding: 0;
   padding-bottom: 4px;
-  width: 300px;
+  width: 290px;
   font-size: 16px;
   background-color: var(--primary-bg);
   color: lightgray;
@@ -61,14 +61,21 @@ h1 {
 }
 
 .param-value {
-  width: 362px;
-  margin-right: 8px;
+  width: 332px;
   margin-left: 8px;
 }
 
 .param-container {
   display: flex;
   flex-wrap: wrap;
+}
+
+.param-copy {
+  margin-left: 8px;
+}
+
+.param-copy:hover {
+  cursor: pointer;
 }
 
 input[type="checkbox"] {
