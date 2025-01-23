@@ -11,6 +11,7 @@ const copyToClipboard = (text: string) => {
 
 const checkboxes: Record<string, { checked: boolean; inputs: string[] }> = {};
 
+
 document.addEventListener("DOMContentLoaded", () => {
   const checkboxIds = [
     "headerCheckbox1",
@@ -20,6 +21,8 @@ document.addEventListener("DOMContentLoaded", () => {
     "headerCheckbox5",
     "headerCheckbox6",
   ];
+
+  const isAnyChecked = () => checkboxIds.some((id) => document.querySelector<HTMLInputElement>(`#${id}`)?.checked);
 
   const checkboxElements = checkboxIds.map((id) =>
     document.querySelector<HTMLInputElement>(`#${id}`),
@@ -83,6 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
           id: paramId,
           header: inputA.value,
           value: inputB.value,
+          isAnyChecked: isAnyChecked(),
         });
       }
     }
@@ -192,9 +196,10 @@ document.addEventListener("DOMContentLoaded", () => {
           id: index + 1,
           header: inputA.value,
           value: inputB.value,
+          isAnyChecked: isAnyChecked(),
         });
       } else {
-        chrome.runtime.sendMessage({ addHeader: false, id: index + 1 });
+        chrome.runtime.sendMessage({ addHeader: false, id: index + 1, isAnyChecked: isAnyChecked() });
       }
     });
 

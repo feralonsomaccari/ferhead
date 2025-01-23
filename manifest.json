@@ -22,6 +22,11 @@
       "description": "Do something when F2 is pressed"
     }
   },
+"icons": {
+    "16": "assets/disabled-16.png",
+    "48": "assets/disabled-48.png",
+    "128": "assets/disabled-128.png"
+  },
   "action": {
     "default_popup": "popup.html"
   }
