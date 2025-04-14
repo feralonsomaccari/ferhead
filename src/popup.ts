@@ -217,9 +217,16 @@ document.addEventListener("DOMContentLoaded", () => {
   copyButtons.forEach((buttonEl, index) => {
     const [inputA, inputB] = inputElements[index];
     if (!buttonEl || !inputA || !inputB) return;
-    buttonEl.addEventListener("click", () => {
-      const createQueryParam = `?${inputA.value}=${inputB.value}`;
-      copyToClipboard(createQueryParam);
+       buttonEl.addEventListener("click", () => {
+
+       const matches = inputB.value.match(/pub-(\w+)-([\w-]+)\.(\w+)-(\w+)\./);
+       if (matches) {
+          const [prNumber, appName, region, environment] = [matches[1], matches[2], matches[3], matches[4]];
+          const regionVal = region === 'ore' ? 'oregon' : 'virginia'; 
+          window.open(`https://next.onservo.com/orgs/${environment}/regions/${regionVal}/apps/${appName}/stacks/${prNumber}`, "_blank");
+       } else {
+          console.error("No match found! Header value format might be incorrect or doesnt exists in servo.");
+       }
     });
   });
 
