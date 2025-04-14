@@ -6,7 +6,6 @@ chrome.runtime.onMessage.addListener(
     value: string;
     isAnyChecked: boolean;
   }) => {
-    console.log("ANYYYYYY: ", message.isAnyChecked);
 
     const iconPath = message.isAnyChecked
       ? {
@@ -30,8 +29,6 @@ chrome.runtime.onMessage.addListener(
           !message.header ||
           !message.value
         ) {
-          console.log(message);
-          console.error("missing params");
           return;
         }
 
