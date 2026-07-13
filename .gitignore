@@ -20,6 +20,3 @@ package-lock.json
 # Optional - If you're using the `outDir` in your `tsconfig.json` for TypeScript
 /out/
 
-# Ignore compiled JavaScript (if you prefer not to commit them, as they can be re-generated)
-*.js
-*.map
