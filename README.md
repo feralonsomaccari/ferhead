@@ -1,4 +1,4 @@
-# FERHEAD
+# FERHEADER
 
 ![example image](./demo-image.png)
 
