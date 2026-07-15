@@ -1,13 +1,15 @@
+// Toolbar densities: 16 (1x), 24 (1.5x), 32 (2x). The 48/128 assets are for the
+// manifest "icons" block (extensions page / store), not this slot.
 const ENABLED_ICONS = {
   16: "../assets/enabled-16.png",
-  48: "../assets/enabled-48.png",
-  128: "../assets/enabled-128.png",
+  24: "../assets/enabled-24.png",
+  32: "../assets/enabled-32.png",
 };
 
 const DISABLED_ICONS = {
   16: "../assets/disabled-16.png",
-  48: "../assets/disabled-48.png",
-  128: "../assets/disabled-128.png",
+  24: "../assets/disabled-24.png",
+  32: "../assets/disabled-32.png",
 };
 
 const setIcon = (isAnyChecked: boolean) => {
