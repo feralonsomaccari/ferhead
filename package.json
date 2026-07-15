@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Simple mod header for personal use",
   "main": "index.js",
+  "scripts": {
+    "build": "tsc"
+  },
   "keywords": [],
   "author": "feralonsomaccari",
   "devDependencies": {

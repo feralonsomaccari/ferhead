@@ -69,18 +69,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Handle changes to param value when the checkbox is active
+  // Handle edits to either field while the checkbox is active. Both fields are
+  // covered: clearing the header name has to reach the background too, or the
+  // previous rule keeps injecting.
   document.addEventListener("input", (event) => {
     const activeElement = document.activeElement;
     if (
       activeElement instanceof HTMLInputElement &&
-      activeElement.id.startsWith("paramValue")
+      (activeElement.id.startsWith("paramValue") ||
+        activeElement.id.startsWith("paramHeader"))
     ) {
       event.preventDefault();
-      const paramId = parseInt(activeElement?.id.split("-")[1]);
+      const paramId = parseInt(activeElement.id.split("-")[1]);
       const [inputA, inputB] = inputElements[paramId - 1];
       const checkbox = checkboxElements[paramId - 1];
       if (inputA && inputB && checkbox?.checked) {
+        // An empty field sends through as-is; the background drops the rule
+        // rather than leaving a stale one live.
         chrome.runtime.sendMessage({
           addHeader: true,
           id: paramId,
