@@ -47,6 +47,17 @@ h1 {
   border-left-color: var(--primary-color);
 }
 
+/* An inactive row's text recedes, but stays legible enough to read and edit. */
+.header-wrapper:not(:has(input[type="checkbox"]:checked)) .header-title,
+.header-wrapper:not(:has(input[type="checkbox"]:checked)) .paramInput {
+  color: #8f8f8f;
+}
+
+/* Editing an inactive row brings its text back to full strength. */
+.header-wrapper .paramInput:focus {
+  color: lightgray;
+}
+
 .header-title {
   color: lightgray;
 }
