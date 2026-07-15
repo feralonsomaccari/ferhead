@@ -5,8 +5,8 @@
 }
 
 html {
-  /* Maximum width */
-  width: 800px;
+  /* Wide enough to keep the shortcuts legend on one line. */
+  width: 720px;
 }
 
 body {
@@ -17,14 +17,13 @@ body {
 }
 
 h1 {
-  margin-top: 0;
-  margin-left: 0;
   color: var(--primary-color);
-  width: 150px;
-  padding-bottom: 4px;
+  font-size: 24px;
+  /* Sits on the body's dotted border, punching a labelled gap in it. */
+  display: inline-block;
   position: relative;
   bottom: 22px;
-  background: #1e1e1e;
+  background: var(--primary-bg);
   padding: 0 8px;
   margin: 0;
 }
@@ -34,6 +33,18 @@ h1 {
   gap: 8px;
   height: 35px;
   align-items: center;
+  padding-left: 8px;
+  border-left: 2px solid transparent;
+  border-radius: 2px;
+}
+
+.header-wrapper:hover {
+  background-color: #262626;
+}
+
+/* A checked row is actively injecting a header, so it gets a loud accent. */
+.header-wrapper:has(input[type="checkbox"]:checked) {
+  border-left-color: var(--primary-color);
 }
 
 .header-title {
@@ -51,7 +62,8 @@ h1 {
 .paramInput {
   padding: 0;
   padding-bottom: 4px;
-  width: 290px;
+  flex: 1;
+  min-width: 0;
   font-size: 16px;
   background-color: var(--primary-bg);
   color: lightgray;
@@ -60,22 +72,75 @@ h1 {
   outline: none;
 }
 
+.paramInput::placeholder {
+  color: #5c5c5c;
+}
+
+.paramInput:focus {
+  border-bottom-color: var(--primary-color);
+}
+
 .param-value {
-  width: 332px;
   margin-left: 8px;
 }
 
+/* No wrapping: a row is one line, and the inputs absorb the leftover width. */
 .param-container {
   display: flex;
-  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
 }
 
-.param-copy {
+.param-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-left: 8px;
+  width: 28px;
+  height: 26px;
+  font-size: 13px;
+  font-weight: 600;
+  color: lightgray;
+  background-color: transparent;
+  border: 1px solid #4d4d4d;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
-.param-copy:hover {
-  cursor: pointer;
+/* Inherits the button's color, so hover and flash states carry to the glyph. */
+.icon {
+  width: 15px;
+  height: 15px;
+}
+
+.param-action-servo:hover {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.param-action-url:hover {
+  color: var(--secondary-color);
+  border-color: var(--secondary-color);
+}
+
+.param-action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #4d4d4d;
+}
+
+/* Click feedback: the actions are otherwise silent, so success and failure
+   both have to show up on the button itself. */
+.param-action.is-ok {
+  color: #ffffff;
+  background-color: #3f8f4f;
+  border-color: #3f8f4f;
+}
+
+.param-action.is-error {
+  color: #ffffff;
+  background-color: #a33b3b;
+  border-color: #a33b3b;
 }
 
 input[type="checkbox"] {
@@ -113,4 +178,79 @@ input[type="checkbox"]:checked::after {
 input[type="checkbox"]:focus {
   outline: none;
   box-shadow: 0 0 0 2px #4d4d4d;
+}
+
+/* Indent to the header rows' text: their 2px accent border + 8px padding. */
+.legend {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  padding-top: 10px;
+  padding-left: 10px;
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+/* One grid for both action rows so the glyphs share a column and the
+   descriptions start on a single left edge, regardless of glyph width. */
+.legend-keys {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+}
+
+/* A labelled button, too wide for the glyph column, so it sits on its own row
+   above the icon legend with its note alongside. */
+.legend-servo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+/* A text label, not a glyph: opt out of the square icon-button sizing. */
+.servo-open {
+  margin-left: 0;
+  flex: none;
+  width: auto;
+  height: 24px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.legend-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  width: 26px;
+  height: 24px;
+  font-weight: 600;
+  border: 1px solid #4d4d4d;
+  border-radius: 3px;
+}
+
+.legend code {
+  color: lightgray;
+}
+
+.legend-keys dt,
+.legend-keys dd {
+  margin: 0;
+}
+
+.legend-shortcuts {
+  margin: 8px 0 0;
+  white-space: nowrap;
+}
+
+.legend-shortcuts kbd {
+  padding: 1px 4px;
+  font-family: inherit;
+  font-size: 11px;
+  color: lightgray;
+  background-color: #2b2b2b;
+  border: 1px solid #4d4d4d;
+  border-radius: 3px;
 }

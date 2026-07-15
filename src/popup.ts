@@ -1,12 +1,71 @@
-const copyToClipboard = (text: string) => {
+// The actions open a tab or write to the clipboard, neither of which is visible
+// from the popup. Flash the button so a click always resolves to something.
+const flash = (button: HTMLButtonElement, state: "is-ok" | "is-error") => {
+  button.classList.remove("is-ok", "is-error");
+  // Force a reflow so a repeat click restarts the flash instead of no-opping.
+  void button.offsetWidth;
+  button.classList.add(state);
+  setTimeout(() => button.classList.remove(state), 600);
+};
+
+const copyToClipboard = (text: string, button: HTMLButtonElement) => {
   navigator.clipboard
     .writeText(text)
     .then(() => {
-      console.log("Copied to clipboard:", text);
+      flash(button, "is-ok");
     })
     .catch((err) => {
       console.error("Failed to copy:", err);
+      flash(button, "is-error");
     });
+};
+
+// Servo app names don't follow one rule from the brand ("-rendering" vs
+// "-renderer"), so each brand is listed explicitly. Add brands as they come up.
+const SERVO_APPS: Record<string, { app: string; region: string }> = {
+  barrons: { app: "barrons-rendering", region: "oregon" },
+  marketwatch: { app: "marketwatch-renderer", region: "oregon" },
+};
+
+// Market-data pages on barrons are served by their own app, except for this one
+// path, which the barrons app still renders.
+const ORION_APP = "orion";
+const BARRONS_MARKET_DATA_PATH = "/market-data/stocks/stock-picks";
+
+// pr-327.www.dev.barrons.com -> orgs/dev .. apps/barrons-rendering .. stacks/pr327
+const servoUrlFromTabUrl = (tabUrl: string): string | null => {
+  let url: URL;
+  try {
+    url = new URL(tabUrl);
+  } catch {
+    return null;
+  }
+
+  const labels = url.hostname.split(".");
+
+  const prNumber = labels[0]?.match(/^pr-(\d+)$/)?.[1];
+  if (!prNumber) return null;
+
+  const brand = labels.find((label) => label in SERVO_APPS);
+  if (!brand) return null;
+  const { region } = SERVO_APPS[brand];
+  let { app } = SERVO_APPS[brand];
+
+  // The label before the brand is the environment (…dev.barrons.com -> dev).
+  const environment = labels[labels.indexOf(brand) - 1];
+  if (!environment) return null;
+
+  // Trailing slashes shouldn't change which app a path maps to.
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  if (
+    brand === "barrons" &&
+    /^\/market-data\/.+/.test(path) &&
+    path !== BARRONS_MARKET_DATA_PATH
+  ) {
+    app = ORION_APP;
+  }
+
+  return `https://next.onservo.com/orgs/${environment}/regions/${region}/apps/${app}/stacks/pr${prNumber}`;
 };
 
 const checkboxes: Record<string, { checked: boolean; inputs: string[] }> = {};
@@ -33,9 +92,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelector<HTMLInputElement>(`#paramValue-${index + 1}`),
   ]);
 
-  const copyButtons = checkboxIds.map((id, index) =>
-    document.querySelector<HTMLButtonElement>(`#paramCopy-${index + 1}`),
-  );
+  // One S for the whole popup: it reads the active tab, not any single row.
+  const servoButton = document.querySelector<HTMLButtonElement>("#servoOpen");
 
   const copyButtonsWithUrl = checkboxIds.map((id, index) =>
     document.querySelector<HTMLButtonElement>(`#paramCopyWithUrl-${index + 1}`),
@@ -45,7 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (
     checkboxElements.some((checkbox) => !checkbox) ||
     inputElements.some(([inputA, inputB]) => !inputA || !inputB) ||
-    copyButtons.some((copyButton) => !copyButton) ||
+    !servoButton ||
     copyButtonsWithUrl.some((copyButton) => !copyButton)
   ) {
     console.error("One or more elements are missing.");
@@ -113,61 +171,28 @@ document.addEventListener("DOMContentLoaded", () => {
       event.preventDefault();
     }
 
-    if (event.shiftKey && /^Digit[1-4]$/.test(event.code)) {
+    // Shift+N selects row N's value, Ctrl+N its header name. Both select the
+    // whole field so the next keystroke replaces it.
+    if ((event.shiftKey || event.ctrlKey) && /^Digit[1-6]$/.test(event.code)) {
       event.preventDefault();
 
       const keyNumber = parseInt(event.code.replace("Digit", ""), 10);
-      const paramHeaderInputId = `paramValue-${keyNumber}`;
-      const secondInput = document.querySelector<HTMLInputElement>(
-        `#${paramHeaderInputId}`,
+      const field = event.shiftKey ? "paramValue" : "paramHeader";
+      const target = document.querySelector<HTMLInputElement>(
+        `#${field}-${keyNumber}`,
       );
 
-      if (secondInput) {
-        const pattern = new RegExp(`-pr\\d+-`, "g");
-        const match = secondInput.value.match(pattern);
-
-        if (match) {
-          const startIndex = secondInput.value.indexOf(match[0]) + 3;
-          const endIndex = startIndex + match[0].slice(4).length;
-          secondInput.focus();
-          secondInput.setSelectionRange(startIndex, endIndex);
-        }
+      if (target) {
+        target.focus();
+        target.select();
       }
       return;
     }
 
-    // Handle only numeric input when a number is selected
+    // Typing inside a field is text entry, never a checkbox toggle.
     if (
       activeElement instanceof HTMLInputElement &&
-      activeElement.selectionStart !== activeElement.selectionEnd &&
-      activeElement.id.startsWith("paramValue")
-    ) {
-      // Allow cut, copy, and paste commands
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        (event.key === "c" || event.key === "x" || event.key === "v")
-      ) {
-        return; // Allow Ctrl+C, Ctrl+X, and Ctrl+V to pass through
-      }
-
-      // Allow only numbers (0-9)
-      if (
-        !/^\d$/.test(event.key) &&
-        event.key !== "Backspace" &&
-        event.key !== "Delete" &&
-        event.key !== "ArrowLeft" &&
-        event.key !== "ArrowRight" &&
-        event.key !== "Tab"
-      ) {
-        event.preventDefault();
-      }
-    }
-
-    // After here it sohuld only affect checkboxes
-    if (
-      activeElement instanceof HTMLInputElement &&
-      activeElement.type === "text" &&
-      activeElement.id.startsWith("paramValue")
+      activeElement.type === "text"
     ) {
       return;
     }
@@ -219,21 +244,31 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  copyButtons.forEach((buttonEl, index) => {
-    const [inputA, inputB] = inputElements[index];
-    if (!buttonEl || !inputA || !inputB) return;
-       buttonEl.addEventListener("click", () => {
+  if (servoButton) {
+    servoButton.addEventListener("click", () => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const activeTab = tabs[0];
+        if (!activeTab || !activeTab.url) {
+          console.error("Unable to retrieve the active tab's URL");
+          flash(servoButton, "is-error");
+          return;
+        }
 
-       const matches = inputB.value.match(/pub-(\w+)-([\w-]+)\.(\w+)-(\w+)\./);
-       if (matches) {
-          const [prNumber, appName, region, environment] = [matches[1], matches[2], matches[3], matches[4]];
-          const regionVal = region === 'ore' ? 'oregon' : 'virginia'; 
-          window.open(`https://next.onservo.com/orgs/${environment}/regions/${regionVal}/apps/${appName}/stacks/${prNumber}`, "_blank");
-       } else {
-          console.error("No match found! Header value format might be incorrect or doesnt exists in servo.");
-       }
+        const servoUrl = servoUrlFromTabUrl(activeTab.url);
+        if (!servoUrl) {
+          console.error(
+            "This tab doesn't look like a PR stack, or its brand isn't in SERVO_APPS:",
+            activeTab.url,
+          );
+          flash(servoButton, "is-error");
+          return;
+        }
+
+        window.open(servoUrl, "_blank");
+        flash(servoButton, "is-ok");
+      });
     });
-  });
+  }
 
   copyButtonsWithUrl.forEach((buttonEl, index) => {
     const [inputA, inputB] = inputElements[index];
@@ -244,12 +279,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const activeTab = tabs[0];
         if (!activeTab || !activeTab.url) {
           console.error("Unable to retrieve the active tab's URL");
+          flash(buttonEl, "is-error");
           return;
         }
         const url = new URL(activeTab.url);
         url.searchParams.set(inputA.value, inputB.value);
         const fullUrl = url.toString();
-        copyToClipboard(fullUrl);
+        copyToClipboard(fullUrl, buttonEl);
       });
     });
   });
