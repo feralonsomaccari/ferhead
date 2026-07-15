@@ -86,8 +86,9 @@
   <footer class="legend">
     <div class="legend-servo">
       <button class="param-action param-action-servo servo-open" id="servoOpen"
-        title="Open this tab's PR stack in Servo (reads pr-<number> from the URL)">Open on Servo</button>
-      <span>Reads <code>pr-&lt;number&gt;</code> from the page URL</span>
+        title="Open this tab's stack in Servo (reads the servo-context meta tag, or falls back to the URL)">Open on
+        Servo</button>
+      <span>Reads the page's <code>servo-context</code>, else <code>pr-&lt;number&gt;</code> from the URL</span>
     </div>
     <dl class="legend-keys">
       <dt class="legend-key"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6.5 9.5a2.5 2.5 0 0 0 3.54 0l2.5-2.5a2.5 2.5 0 0 0-3.54-3.54l-.9.9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M9.5 6.5a2.5 2.5 0 0 0-3.54 0l-2.5 2.5a2.5 2.5 0 0 0 3.54 3.54l.9-.9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></dt>

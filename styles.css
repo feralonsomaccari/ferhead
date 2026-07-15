@@ -53,8 +53,10 @@ h1 {
   color: #8f8f8f;
 }
 
-/* Editing an inactive row brings its text back to full strength. */
-.header-wrapper .paramInput:focus {
+/* Editing an inactive row brings its text back to full strength. The repeated
+   class outweighs the dimming rule above, which scores an extra element from
+   the `input` inside its :has(). */
+.header-wrapper .paramInput.paramInput.paramInput:focus {
   color: lightgray;
 }
 
@@ -230,6 +232,7 @@ input[type="checkbox"]:focus {
   font-size: 12px;
 }
 
+/* Matches the kbd keys and the Servo button; only the prose stays muted. */
 .legend-key {
   display: inline-flex;
   align-items: center;
@@ -237,6 +240,7 @@ input[type="checkbox"]:focus {
   justify-self: center;
   width: 26px;
   height: 24px;
+  color: lightgray;
   font-weight: 600;
   border: 1px solid #4d4d4d;
   border-radius: 3px;

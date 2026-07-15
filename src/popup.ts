@@ -32,6 +32,22 @@ const SERVO_APPS: Record<string, { app: string; region: string }> = {
 const ORION_APP = "orion";
 const BARRONS_MARKET_DATA_PATH = "/market-data/stocks/stock-picks";
 
+// The page can name its own Servo context, which beats inferring one from the
+// URL: servo:<env>:<region>:<app>:<stack>. The env is ignored on purpose —
+// these links are only ever useful pointing at dev.
+const SERVO_META_NAME = "servo-context";
+
+const servoUrlFromContext = (content: string): string | null => {
+  const parts = content.trim().split(":");
+  if (parts.length !== 5) return null;
+
+  const [prefix, , region, app, stack] = parts;
+  if (prefix !== "servo") return null;
+  if (!region || !app || !stack) return null;
+
+  return `https://next.onservo.com/orgs/dev/regions/${region}/apps/${app}/stacks/${stack}`;
+};
+
 // pr-327.www.dev.barrons.com -> orgs/dev .. apps/barrons-rendering .. stacks/pr327
 const servoUrlFromTabUrl = (tabUrl: string): string | null => {
   let url: URL;
@@ -244,20 +260,59 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Ask the page for its servo-context meta tag. Resolves to null whenever the
+  // tag is absent or the page can't be scripted (chrome:// pages, the store).
+  const readServoContext = (tabId: number): Promise<string | null> =>
+    new Promise((resolve) => {
+      // Missing on a stale extension load, and throws on pages that can't be
+      // scripted. Either way the URL fallback should still get its turn.
+      if (!chrome.scripting?.executeScript) {
+        resolve(null);
+        return;
+      }
+
+      try {
+        chrome.scripting.executeScript(
+          {
+            target: { tabId },
+            func: (metaName: string) =>
+              document
+                .querySelector<HTMLMetaElement>(`meta[name="${metaName}"]`)
+                ?.content ?? null,
+            args: [SERVO_META_NAME],
+          },
+          (results) => {
+            if (chrome.runtime.lastError || !results?.length) {
+              resolve(null);
+              return;
+            }
+            resolve(results[0].result ?? null);
+          },
+        );
+      } catch {
+        resolve(null);
+      }
+    });
+
   if (servoButton) {
     servoButton.addEventListener("click", () => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
         const activeTab = tabs[0];
-        if (!activeTab || !activeTab.url) {
-          console.error("Unable to retrieve the active tab's URL");
+        if (!activeTab || !activeTab.url || activeTab.id === undefined) {
+          console.error("Unable to retrieve the active tab");
           flash(servoButton, "is-error");
           return;
         }
 
-        const servoUrl = servoUrlFromTabUrl(activeTab.url);
+        // The page's own context wins; the URL is only a fallback guess.
+        const context = await readServoContext(activeTab.id);
+        const servoUrl =
+          (context && servoUrlFromContext(context)) ||
+          servoUrlFromTabUrl(activeTab.url);
+
         if (!servoUrl) {
           console.error(
-            "This tab doesn't look like a PR stack, or its brand isn't in SERVO_APPS:",
+            "No servo-context meta tag, and this tab doesn't look like a PR stack:",
             activeTab.url,
           );
           flash(servoButton, "is-error");
