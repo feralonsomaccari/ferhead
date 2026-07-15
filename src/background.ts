@@ -1,5 +1,3 @@
-// Toolbar densities: 16 (1x), 24 (1.5x), 32 (2x). The 48/128 assets are for the
-// manifest "icons" block (extensions page / store), not this slot.
 const ENABLED_ICONS = {
   16: "../assets/enabled-16.png",
   24: "../assets/enabled-24.png",
@@ -16,9 +14,6 @@ const setIcon = (isAnyChecked: boolean) => {
   chrome.action.setIcon({ path: isAnyChecked ? ENABLED_ICONS : DISABLED_ICONS });
 };
 
-// The icon lives in browser UI state and is not persisted, so it resets to the
-// manifest default whenever the service worker starts. Dynamic rules DO persist,
-// so without this the icon can read "disabled" while rules are still injecting.
 const syncIconFromStorage = () => {
   chrome.storage.local.get(["checkboxes"], (result) => {
     const checkboxes: Record<string, { checked: boolean } | undefined> =
@@ -30,8 +25,6 @@ const syncIconFromStorage = () => {
 chrome.runtime.onStartup.addListener(syncIconFromStorage);
 chrome.runtime.onInstalled.addListener(syncIconFromStorage);
 
-// The worker also unloads after ~30s idle; re-running at top level covers every
-// respawn, not just startup/install.
 syncIconFromStorage();
 
 chrome.runtime.onMessage.addListener(
@@ -51,9 +44,6 @@ chrome.runtime.onMessage.addListener(
           return;
         }
 
-        // Checked but incomplete (e.g. the value was cleared mid-edit). Drop the
-        // rule rather than returning early, which would leave the previous
-        // header injecting while the popup shows an empty field.
         if (!message.header || !message.value) {
           chrome.declarativeNetRequest.updateDynamicRules(
             {

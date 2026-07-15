@@ -1,5 +1,3 @@
-// The actions open a tab or write to the clipboard, neither of which is visible
-// from the popup. Flash the button so a click always resolves to something.
 const flash = (button: HTMLButtonElement, state: "is-ok" | "is-error") => {
   button.classList.remove("is-ok", "is-error");
   // Force a reflow so a repeat click restarts the flash instead of no-opping.
@@ -20,21 +18,14 @@ const copyToClipboard = (text: string, button: HTMLButtonElement) => {
     });
 };
 
-// Servo app names don't follow one rule from the brand ("-rendering" vs
-// "-renderer"), so each brand is listed explicitly. Add brands as they come up.
 const SERVO_APPS: Record<string, { app: string; region: string }> = {
   barrons: { app: "barrons-rendering", region: "oregon" },
   marketwatch: { app: "marketwatch-renderer", region: "oregon" },
 };
 
-// Market-data pages on barrons are served by their own app, except for this one
-// path, which the barrons app still renders.
 const ORION_APP = "orion";
 const BARRONS_MARKET_DATA_PATH = "/market-data/stocks/stock-picks";
 
-// The page can name its own Servo context, which beats inferring one from the
-// URL: servo:<env>:<region>:<app>:<stack>. The env is ignored on purpose —
-// these links are only ever useful pointing at dev.
 const SERVO_META_NAME = "servo-context";
 
 const servoUrlFromContext = (content: string): string | null => {
@@ -48,7 +39,6 @@ const servoUrlFromContext = (content: string): string | null => {
   return `https://next.onservo.com/orgs/dev/regions/${region}/apps/${app}/stacks/${stack}`;
 };
 
-// pr-327.www.dev.barrons.com -> orgs/dev .. apps/barrons-rendering .. stacks/pr327
 const servoUrlFromTabUrl = (tabUrl: string): string | null => {
   let url: URL;
   try {
@@ -143,9 +133,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Handle edits to either field while the checkbox is active. Both fields are
-  // covered: clearing the header name has to reach the background too, or the
-  // previous rule keeps injecting.
   document.addEventListener("input", (event) => {
     const activeElement = document.activeElement;
     if (
@@ -158,8 +145,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const [inputA, inputB] = inputElements[paramId - 1];
       const checkbox = checkboxElements[paramId - 1];
       if (inputA && inputB && checkbox?.checked) {
-        // An empty field sends through as-is; the background drops the rule
-        // rather than leaving a stale one live.
         chrome.runtime.sendMessage({
           addHeader: true,
           id: paramId,
@@ -213,7 +198,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Check box Listener
     if (key >= 1 && key <= checkboxElements.length) {
       const checkbox = checkboxElements[key - 1];
       if (!checkbox) return;
@@ -260,12 +244,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Ask the page for its servo-context meta tag. Resolves to null whenever the
-  // tag is absent or the page can't be scripted (chrome:// pages, the store).
   const readServoContext = (tabId: number): Promise<string | null> =>
     new Promise((resolve) => {
-      // Missing on a stale extension load, and throws on pages that can't be
-      // scripted. Either way the URL fallback should still get its turn.
       if (!chrome.scripting?.executeScript) {
         resolve(null);
         return;
@@ -304,23 +284,27 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
 
-        // The page's own context wins; the URL is only a fallback guess.
-        const context = await readServoContext(activeTab.id);
-        const servoUrl =
-          (context && servoUrlFromContext(context)) ||
-          servoUrlFromTabUrl(activeTab.url);
+        try {
+          const context = await readServoContext(activeTab.id);
+          const servoUrl =
+            (context && servoUrlFromContext(context)) ||
+            servoUrlFromTabUrl(activeTab.url);
 
-        if (!servoUrl) {
-          console.error(
-            "No servo-context meta tag, and this tab doesn't look like a PR stack:",
-            activeTab.url,
-          );
+          if (!servoUrl) {
+            console.error(
+              "No servo-context meta tag, and this tab doesn't look like a PR stack:",
+              activeTab.url,
+            );
+            flash(servoButton, "is-error");
+            return;
+          }
+
+          window.open(servoUrl, "_blank");
+          flash(servoButton, "is-ok");
+        } catch (err) {
+          console.error("Failed to open Servo:", err);
           flash(servoButton, "is-error");
-          return;
         }
-
-        window.open(servoUrl, "_blank");
-        flash(servoButton, "is-ok");
       });
     });
   }
