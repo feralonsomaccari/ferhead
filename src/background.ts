@@ -15,7 +15,13 @@ const setIcon = (isAnyChecked: boolean) => {
 };
 
 const syncIconFromStorage = () => {
-  chrome.storage.local.get(["checkboxes"], (result) => {
+  chrome.storage.local.get(["headerEntries", "checkboxes"], (result) => {
+    if (Array.isArray(result.headerEntries)) {
+      const entries: Array<{ checked?: boolean }> = result.headerEntries;
+      setIcon(entries.some((entry) => entry?.checked));
+      return;
+    }
+
     const checkboxes: Record<string, { checked: boolean } | undefined> =
       result.checkboxes ?? {};
     setIcon(Object.keys(checkboxes).some((key) => checkboxes[key]?.checked));

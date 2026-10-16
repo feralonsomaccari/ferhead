@@ -13,8 +13,13 @@ const setIcon = (isAnyChecked) => {
     chrome.action.setIcon({ path: isAnyChecked ? ENABLED_ICONS : DISABLED_ICONS });
 };
 const syncIconFromStorage = () => {
-    chrome.storage.local.get(["checkboxes"], (result) => {
+    chrome.storage.local.get(["headerEntries", "checkboxes"], (result) => {
         var _a;
+        if (Array.isArray(result.headerEntries)) {
+            const entries = result.headerEntries;
+            setIcon(entries.some((entry) => entry === null || entry === void 0 ? void 0 : entry.checked));
+            return;
+        }
         const checkboxes = (_a = result.checkboxes) !== null && _a !== void 0 ? _a : {};
         setIcon(Object.keys(checkboxes).some((key) => { var _a; return (_a = checkboxes[key]) === null || _a === void 0 ? void 0 : _a.checked; }));
     });

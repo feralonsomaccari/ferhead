@@ -74,86 +74,208 @@ const servoUrlFromTabUrl = (tabUrl: string): string | null => {
   return `https://next.onservo.com/orgs/${environment}/regions/${region}/apps/${app}/stacks/pr${prNumber}`;
 };
 
-const checkboxes: Record<string, { checked: boolean; inputs: string[] }> = {};
+type HeaderEntry = { id: number; checked: boolean; name: string; value: string };
 
+const DEFAULT_ROW_COUNT = 6;
+const MAX_SHORTCUT_ROW = 9;
 
-document.addEventListener("DOMContentLoaded", () => {
-  const checkboxIds = [
-    "headerCheckbox1",
-    "headerCheckbox2",
-    "headerCheckbox3",
-    "headerCheckbox4",
-    "headerCheckbox5",
-    "headerCheckbox6",
-  ];
+const defaultHeaderEntries = (): HeaderEntry[] =>
+  Array.from({ length: DEFAULT_ROW_COUNT }, (_, i) => ({
+    id: i + 1,
+    checked: false,
+    name: "",
+    value: "",
+  }));
 
-  const isAnyChecked = () => checkboxIds.some((id) => document.querySelector<HTMLInputElement>(`#${id}`)?.checked);
+type OldCheckboxes = Record<string, { checked?: boolean; inputs?: string[] } | undefined>;
 
-  const checkboxElements = checkboxIds.map((id) =>
-    document.querySelector<HTMLInputElement>(`#${id}`),
-  );
+const migrateOldCheckboxes = (old: OldCheckboxes): HeaderEntry[] =>
+  Object.keys(old)
+    .map((key) => {
+      const match = key.match(/^checkbox(\d+)$/);
+      if (!match) return null;
+      const entry = old[key];
+      return {
+        id: parseInt(match[1], 10),
+        checked: entry?.checked ?? false,
+        name: entry?.inputs?.[0] ?? "",
+        value: entry?.inputs?.[1] ?? "",
+      } as HeaderEntry;
+    })
+    .filter((e): e is HeaderEntry => e !== null)
+    .sort((a, b) => a.id - b.id);
 
-  const inputElements = checkboxIds.map((id, index) => [
-    document.querySelector<HTMLInputElement>(`#paramHeader-${index + 1}`),
-    document.querySelector<HTMLInputElement>(`#paramValue-${index + 1}`),
-  ]);
+const loadState = (): Promise<{ headerEntries: HeaderEntry[]; nextId: number }> =>
+  new Promise((resolve) => {
+    chrome.storage.local.get(["headerEntries", "nextId", "checkboxes"], (result) => {
+      if (Array.isArray(result.headerEntries)) {
+        const entries = result.headerEntries as HeaderEntry[];
+        const nextId =
+          typeof result.nextId === "number"
+            ? result.nextId
+            : entries.reduce((max, e) => Math.max(max, e.id), 0) + 1;
+        resolve({ headerEntries: entries, nextId });
+        return;
+      }
 
-  // One S for the whole popup: it reads the active tab, not any single row.
+      if (result.checkboxes && typeof result.checkboxes === "object") {
+        const migrated = migrateOldCheckboxes(result.checkboxes);
+        const nextId = migrated.reduce((max, e) => Math.max(max, e.id), 0) + 1;
+        chrome.storage.local.set({ headerEntries: migrated, nextId }, () => {
+          chrome.storage.local.remove("checkboxes");
+        });
+        resolve({ headerEntries: migrated, nextId });
+        return;
+      }
+
+      const headerEntries = defaultHeaderEntries();
+      const nextId = DEFAULT_ROW_COUNT + 1;
+      chrome.storage.local.set({ headerEntries, nextId });
+      resolve({ headerEntries, nextId });
+    });
+  });
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const rowsContainer = document.querySelector<HTMLDivElement>("#headerRows");
+  const template = document.querySelector<HTMLTemplateElement>("#header-row-template");
+  const addButton = document.querySelector<HTMLButtonElement>("#addHeaderRow");
+
+  // One Servo button for the whole popup: it reads the active tab, not any single row.
   const servoButton = document.querySelector<HTMLButtonElement>("#servoOpen");
 
-  const copyButtonsWithUrl = checkboxIds.map((id, index) =>
-    document.querySelector<HTMLButtonElement>(`#paramCopyWithUrl-${index + 1}`),
-  );
-
-  // Check if any element is missing
-  if (
-    checkboxElements.some((checkbox) => !checkbox) ||
-    inputElements.some(([inputA, inputB]) => !inputA || !inputB) ||
-    !servoButton ||
-    copyButtonsWithUrl.some((copyButton) => !copyButton)
-  ) {
+  if (!rowsContainer || !template || !addButton || !servoButton) {
     console.error("One or more elements are missing.");
     return;
   }
 
-  // Load saved states from storage
-  chrome.storage.local.get(["checkboxes"], (result) => {
-    if (result.checkboxes) {
-      Object.assign(checkboxes, result.checkboxes);
-      checkboxElements.forEach((checkbox, index) => {
-        if (!checkbox) return;
-        const key = `checkbox${index + 1}`;
-        const [inputA, inputB] = inputElements[index];
-        checkbox.checked = checkboxes[key]?.checked || false;
-        if (inputA && inputB) {
-          inputA.value = checkboxes[key]?.inputs?.[0] || "";
-          inputB.value = checkboxes[key]?.inputs?.[1] || "";
+  let headerEntries: HeaderEntry[] = [];
+  let nextId = 1;
+  let renderedRows: Array<{
+    entry: HeaderEntry;
+    checkboxEl: HTMLInputElement;
+    nameEl: HTMLInputElement;
+    valueEl: HTMLInputElement;
+  }> = [];
+
+  const isAnyChecked = () => headerEntries.some((entry) => entry.checked);
+
+  const persist = () => {
+    chrome.storage.local.set({ headerEntries, nextId });
+  };
+
+  const renderRows = () => {
+    rowsContainer.replaceChildren();
+    renderedRows = headerEntries.map((entry, index) => {
+      const fragment = template.content.cloneNode(true) as DocumentFragment;
+      const titleEl = fragment.querySelector<HTMLSpanElement>(".header-title");
+      const checkboxEl = fragment.querySelector<HTMLInputElement>('input[type="checkbox"]');
+      const nameEl = fragment.querySelector<HTMLInputElement>(".paramInput:not(.param-value)");
+      const valueEl = fragment.querySelector<HTMLInputElement>(".param-value");
+      const copyButton = fragment.querySelector<HTMLButtonElement>(".param-action-url");
+      const deleteButton = fragment.querySelector<HTMLButtonElement>(".param-action-delete");
+
+      if (!titleEl || !checkboxEl || !nameEl || !valueEl || !copyButton || !deleteButton) {
+        throw new Error("Header row template is missing an expected element.");
+      }
+
+      const position = index + 1;
+      titleEl.textContent = String(position);
+      titleEl.classList.toggle("header-title-first", index === 0);
+
+      checkboxEl.id = `headerCheckbox${entry.id}`;
+      checkboxEl.setAttribute("aria-label", `Enable header ${position}`);
+      checkboxEl.checked = entry.checked;
+
+      nameEl.id = `paramHeader-${entry.id}`;
+      nameEl.setAttribute("aria-label", `Header name ${position}`);
+      nameEl.value = entry.name;
+
+      valueEl.id = `paramValue-${entry.id}`;
+      valueEl.setAttribute("aria-label", `Header value ${position}`);
+      valueEl.value = entry.value;
+
+      copyButton.id = `paramCopyWithUrl-${entry.id}`;
+      copyButton.setAttribute("aria-label", `Copy tab URL with header ${position} as query param`);
+
+      deleteButton.id = `paramDelete-${entry.id}`;
+      deleteButton.setAttribute("aria-label", `Delete header ${position}`);
+
+      checkboxEl.addEventListener("change", () => {
+        entry.checked = checkboxEl.checked;
+        persist();
+
+        if (entry.checked) {
+          chrome.runtime.sendMessage({
+            addHeader: true,
+            id: entry.id,
+            header: nameEl.value,
+            value: valueEl.value,
+            isAnyChecked: isAnyChecked(),
+          });
+        } else {
+          chrome.runtime.sendMessage({ addHeader: false, id: entry.id, isAnyChecked: isAnyChecked() });
         }
       });
-    }
-  });
 
-  document.addEventListener("input", (event) => {
-    const activeElement = document.activeElement;
-    if (
-      activeElement instanceof HTMLInputElement &&
-      (activeElement.id.startsWith("paramValue") ||
-        activeElement.id.startsWith("paramHeader"))
-    ) {
-      event.preventDefault();
-      const paramId = parseInt(activeElement.id.split("-")[1]);
-      const [inputA, inputB] = inputElements[paramId - 1];
-      const checkbox = checkboxElements[paramId - 1];
-      if (inputA && inputB && checkbox?.checked) {
-        chrome.runtime.sendMessage({
-          addHeader: true,
-          id: paramId,
-          header: inputA.value,
-          value: inputB.value,
-          isAnyChecked: isAnyChecked(),
+      [nameEl, valueEl].forEach((input, inputIndex) => {
+        input.addEventListener("input", () => {
+          if (inputIndex === 0) {
+            entry.name = input.value;
+          } else {
+            entry.value = input.value;
+          }
+          persist();
+
+          if (entry.checked) {
+            chrome.runtime.sendMessage({
+              addHeader: true,
+              id: entry.id,
+              header: nameEl.value,
+              value: valueEl.value,
+              isAnyChecked: isAnyChecked(),
+            });
+          }
         });
-      }
-    }
+      });
+
+      copyButton.addEventListener("click", () => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          const activeTab = tabs[0];
+          if (!activeTab || !activeTab.url) {
+            console.error("Unable to retrieve the active tab's URL");
+            flash(copyButton, "is-error");
+            return;
+          }
+          const url = new URL(activeTab.url);
+          url.searchParams.set(nameEl.value, valueEl.value);
+          const fullUrl = url.toString();
+          copyToClipboard(fullUrl, copyButton);
+        });
+      });
+
+      deleteButton.addEventListener("click", () => {
+        headerEntries = headerEntries.filter((e) => e.id !== entry.id);
+        persist();
+        chrome.runtime.sendMessage({ addHeader: false, id: entry.id, isAnyChecked: isAnyChecked() });
+        renderRows();
+      });
+
+      rowsContainer.appendChild(fragment);
+
+      return { entry, checkboxEl, nameEl, valueEl };
+    });
+  };
+
+  ({ headerEntries, nextId } = await loadState());
+  renderRows();
+
+  addButton.addEventListener("click", () => {
+    const entry: HeaderEntry = { id: nextId, checked: false, name: "", value: "" };
+    nextId += 1;
+    headerEntries.push(entry);
+    persist();
+    renderRows();
+    renderedRows[renderedRows.length - 1]?.nameEl.focus();
   });
 
   document.addEventListener("keydown", (event) => {
@@ -174,19 +296,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Shift+N selects row N's value, Ctrl+N its header name. Both select the
     // whole field so the next keystroke replaces it.
-    if ((event.shiftKey || event.ctrlKey) && /^Digit[1-6]$/.test(event.code)) {
+    if ((event.shiftKey || event.ctrlKey) && /^Digit[1-9]$/.test(event.code)) {
       event.preventDefault();
 
-      const keyNumber = parseInt(event.code.replace("Digit", ""), 10);
-      const field = event.shiftKey ? "paramValue" : "paramHeader";
-      const target = document.querySelector<HTMLInputElement>(
-        `#${field}-${keyNumber}`,
-      );
+      const position = parseInt(event.code.replace("Digit", ""), 10);
+      const row = renderedRows[position - 1];
+      if (!row) return;
+      const target = event.shiftKey ? row.valueEl : row.nameEl;
 
-      if (target) {
-        target.focus();
-        target.select();
-      }
+      target.focus();
+      target.select();
       return;
     }
 
@@ -198,50 +317,12 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    if (key >= 1 && key <= checkboxElements.length) {
-      const checkbox = checkboxElements[key - 1];
-      if (!checkbox) return;
-      checkbox.checked = !checkbox.checked;
-      checkbox.dispatchEvent(new Event("change"));
+    if (key >= 1 && key <= MAX_SHORTCUT_ROW && key <= renderedRows.length) {
+      const row = renderedRows[key - 1];
+      if (!row) return;
+      row.checkboxEl.checked = !row.checkboxEl.checked;
+      row.checkboxEl.dispatchEvent(new Event("change"));
     }
-  });
-
-  // Handle changes to checkboxes and inputs
-  checkboxElements.forEach((checkbox, index) => {
-    const key = `checkbox${index + 1}`;
-    const [inputA, inputB] = inputElements[index];
-
-    if (!checkbox || !inputA || !inputB) return;
-
-    checkbox.addEventListener("change", () => {
-      checkboxes[key] = {
-        checked: checkbox.checked,
-        inputs: [inputA.value, inputB.value],
-      };
-      chrome.storage.local.set({ checkboxes });
-
-      if (checkbox.checked) {
-        chrome.runtime.sendMessage({
-          addHeader: true,
-          id: index + 1,
-          header: inputA.value,
-          value: inputB.value,
-          isAnyChecked: isAnyChecked(),
-        });
-      } else {
-        chrome.runtime.sendMessage({ addHeader: false, id: index + 1, isAnyChecked: isAnyChecked() });
-      }
-    });
-
-    [inputA, inputB].forEach((input, inputIndex) => {
-      input.addEventListener("input", () => {
-        if (!checkboxes[key]) {
-          checkboxes[key] = { checked: checkbox.checked, inputs: ["", ""] };
-        }
-        checkboxes[key].inputs[inputIndex] = input.value;
-        chrome.storage.local.set({ checkboxes });
-      });
-    });
   });
 
   const readServoContext = (tabId: number): Promise<string | null> =>
@@ -308,26 +389,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
   }
-
-  copyButtonsWithUrl.forEach((buttonEl, index) => {
-    const [inputA, inputB] = inputElements[index];
-    if (!buttonEl || !inputA || !inputB) return;
-
-    buttonEl.addEventListener("click", () => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const activeTab = tabs[0];
-        if (!activeTab || !activeTab.url) {
-          console.error("Unable to retrieve the active tab's URL");
-          flash(buttonEl, "is-error");
-          return;
-        }
-        const url = new URL(activeTab.url);
-        url.searchParams.set(inputA.value, inputB.value);
-        const fullUrl = url.toString();
-        copyToClipboard(fullUrl, buttonEl);
-      });
-    });
-  });
 
 });
 
