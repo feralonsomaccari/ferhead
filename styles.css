@@ -5,14 +5,15 @@
 }
 
 html {
-  /* Wide enough to keep the shortcuts legend on one line. */
-  width: 720px;
+  /* Wide enough for the profile rail plus the shortcuts legend on one line,
+     without exceeding Chrome's popup width budget (avoids a horizontal scrollbar). */
+  width: 780px;
 }
 
 body {
   padding: 8px;
   background-color: var(--primary-bg);
-  border: 1px dotted lightgray;
+  border: 1px solid lightgray;
   margin-top: 16px;
 }
 
@@ -26,6 +27,111 @@ h1 {
   background: var(--primary-bg);
   padding: 0 8px;
   margin: 0;
+}
+
+.layout {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.profile-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 48px;
+  flex: none;
+}
+
+/* .param-action's margin-left is meant for buttons following other inline
+   elements in a row; here the button stands alone and must stay centered
+   with the profile circles below it. */
+.profile-rail .param-action {
+  margin-left: 0;
+}
+
+.profile-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.main-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 10px;
+  margin: 4px 0 8px;
+}
+
+.profile-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.profile-tile:hover {
+  border-color: #4d4d4d;
+}
+
+.profile-tile.is-active {
+  border-color: var(--profile-color, var(--primary-color));
+}
+
+.active-profile-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--profile-color, var(--primary-color));
+  flex: none;
+}
+
+/* The circle itself IS the profile's color; the position number sits inside it. */
+.profile-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: var(--profile-color, var(--primary-color));
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.param-action-toggle-all .icon-deactivate {
+  display: none;
+}
+
+.param-action-toggle-all.is-all-active .icon-activate {
+  display: none;
+}
+
+.param-action-toggle-all.is-all-active .icon-deactivate {
+  display: inline;
+}
+
+.param-action:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
 }
 
 .header-wrapper {
@@ -42,9 +148,10 @@ h1 {
   background-color: #262626;
 }
 
-/* A checked row is actively injecting a header, so it gets a loud accent. */
+/* A checked row is actively injecting a header, so it gets a loud accent,
+   tinted to match the active profile's color. */
 .header-wrapper:has(input[type="checkbox"]:checked) {
-  border-left-color: var(--primary-color);
+  border-left-color: var(--profile-color, var(--primary-color));
 }
 
 /* An inactive row's text recedes, but stays legible enough to read and edit. */
@@ -74,10 +181,10 @@ h1 {
 
 .paramInput {
   padding: 0;
-  padding-bottom: 4px;
+  padding-bottom: 3px;
   flex: 1;
   min-width: 0;
-  font-size: 16px;
+  font-size: 14px;
   background-color: var(--primary-bg);
   color: lightgray;
   border: none;
@@ -147,13 +254,6 @@ h1 {
   border-color: #a33b3b;
 }
 
-.add-row-wrapper {
-  display: flex;
-  padding-left: 10px;
-  margin-top: 4px;
-  margin-bottom: 4px;
-}
-
 .param-action:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px #4d4d4d;
@@ -186,13 +286,13 @@ input[type="checkbox"] {
   margin-bottom: 0;
   margin-top: 0;
   position: relative;
-  border-style: dotted;
+  border-style: solid;
 }
 
 input[type="checkbox"]:checked {
   background-color: var(--primary-color);
   border-color: var(--primary-bg);
-  border-style: dotted;
+  border-style: solid;
 }
 
 input[type="checkbox"]:checked::after {
