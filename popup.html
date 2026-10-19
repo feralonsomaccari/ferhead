@@ -14,18 +14,19 @@
   <div class="layout">
     <nav class="profile-rail" id="profileRail">
       <button class="param-action param-action-add" id="addProfile" title="Add a new profile"
-        aria-label="Add a new profile"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+        aria-label="Add a new profile"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-add"></use></svg></button>
+      <div id="defaultProfileSlot" class="default-profile-slot"></div>
       <div id="profileList" class="profile-list"></div>
     </nav>
 
     <div class="main-column">
       <div class="top-bar" id="topBar">
         <button class="param-action param-action-add" id="addHeaderRow" title="Add a new header row"
-          aria-label="Add a new header row"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+          aria-label="Add a new header row"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-add"></use></svg></button>
         <button class="param-action param-action-toggle-all" id="toggleAllHeaders"
-          title="Activate/deactivate all headers in this profile"><svg class="icon icon-activate" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.3 8.2l1.7 1.7 3.4-3.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="icon icon-deactivate" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.5 5.5l5 5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+          title="Activate/deactivate all headers in this profile"><svg class="icon icon-activate" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-toggle-on"></use></svg><svg class="icon icon-deactivate" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-toggle-off"></use></svg></button>
         <button class="param-action param-action-delete" id="deleteProfile" title="Delete the active profile"
-          aria-label="Delete the active profile"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 4.5h9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M6 4.5V3.3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V4.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 4.5l.6 8.3a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8.3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.7 7v4M9.3 7v4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+          aria-label="Delete the active profile"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-delete"></use></svg></button>
         <span class="active-profile-swatch" id="activeProfileSwatch" aria-hidden="true"></span>
       </div>
 
@@ -41,8 +42,8 @@
         <input type="text" placeholder="X-Header-Name" class="paramInput" />
         <input type="text" placeholder="value" class="paramInput param-value" />
         <button class="param-action param-action-url"
-          title="Copy this tab's URL with the header added as a query param"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6.5 9.5a2.5 2.5 0 0 0 3.54 0l2.5-2.5a2.5 2.5 0 0 0-3.54-3.54l-.9.9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M9.5 6.5a2.5 2.5 0 0 0-3.54 0l-2.5 2.5a2.5 2.5 0 0 0 3.54 3.54l.9-.9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
-        <button class="param-action param-action-delete" title="Delete this row"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 4.5h9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M6 4.5V3.3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V4.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4.5 4.5l.6 8.3a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8.3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.7 7v4M9.3 7v4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+          title="Copy this tab's URL with the header added as a query param"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-copy"></use></svg></button>
+        <button class="param-action param-action-delete" title="Delete this row"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-delete"></use></svg></button>
       </div>
     </div>
   </template>
@@ -61,13 +62,12 @@
       <span>Reads the page's <code>servo-context</code>, else <code>pr-&lt;number&gt;</code> from the URL</span>
     </div>
     <dl class="legend-keys">
-      <dt class="legend-key"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6.5 9.5a2.5 2.5 0 0 0 3.54 0l2.5-2.5a2.5 2.5 0 0 0-3.54-3.54l-.9.9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M9.5 6.5a2.5 2.5 0 0 0-3.54 0l-2.5 2.5a2.5 2.5 0 0 0 3.54 3.54l.9-.9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></dt>
+      <dt class="legend-key"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-copy"></use></svg></dt>
       <dd>Copy this tab's URL with the header added as a query param</dd>
     </dl>
-    <br class="legend-shortcuts">
-      <kbd>1</kbd>–<kbd>9</kbd> toggle a row (first nine only) · <kbd>Ctrl</kbd>+<kbd>1</kbd>–<kbd>9</kbd> select the header name · <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>9</kbd> select the value 
-      </br><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>9</kbd> switch profile (first nine only) ·
-      <kbd>Esc</kbd> leave a field
+    <p class="legend-shortcuts">
+      <kbd>1</kbd>–<kbd>9</kbd> toggle a row (first nine only) · <kbd>Ctrl</kbd>+<kbd>1</kbd>–<kbd>9</kbd> select the header name · <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>9</kbd> select the value<br />
+      <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>0</kbd>–<kbd>9</kbd> switch profile (<kbd>0</kbd> = default, <kbd>1</kbd>–<kbd>9</kbd> = first nine numbered) · <kbd>Esc</kbd> leave a field
     </p>
   </footer>
 

@@ -21,7 +21,7 @@ This extension isn't published on the Chrome Web Store, so it's installed via De
 6. Select this repository's root folder — the one containing `manifest.json`.
 7. FerHeader's icon appears in the toolbar. Click the puzzle-piece icon and pin it for one-click access.
 
-The toolbar icon itself reflects whether anything is active: lit up when the active profile has at least one header turned on, dim when it doesn't.
+The toolbar icon itself reflects whether anything is active: lit up when the active profile or the default profile has at least one complete, checked header, dim when neither does.
 
 | Active | Inactive |
 | --- | --- |
@@ -37,7 +37,15 @@ Each numbered circle is a profile — an independent collection of header rows w
 
 - **Add a profile** — the `+` button above the circles creates a new profile (starting with one empty row), makes it active immediately, and assigns it the next color in the palette.
 - **Switch profiles** — click a circle, or use the keyboard shortcut below.
-- **Delete the active profile** — use the trash button in the top bar (see below). The last remaining profile can't be deleted.
+- **Delete the active profile** — use the trash button in the top bar (see below). The last remaining profile can't be deleted, and neither can the default profile.
+
+#### Default profile (`*`)
+
+![Default profile tile](./docs/default-profile.png)
+
+The gold `*` tile pinned above the numbered circles is the **default profile**. It can never be deleted — the trash button in the top bar disables itself while it's active. Any header that's checked (and has both a name and a value) in the default profile is applied to *every* request, in addition to whatever the profile you're currently viewing contributes — regardless of which numbered profile is active. Otherwise it behaves exactly like any other profile: its own rows, its own color, same add/edit/delete/toggle-all controls.
+
+If the default profile and the active profile both set the same header name, which value wins is resolved by `declarativeNetRequest`'s own rule-priority mechanism, not by this extension — don't rely on a specific merge order.
 
 ### Top bar
 
@@ -72,7 +80,7 @@ Also shown in the popup's footer:
 | `1`–`9` | Toggle row N on/off (first nine rows only) |
 | `Ctrl`+`1`–`9` | Focus and select row N's header-name field |
 | `Shift`+`1`–`9` | Focus and select row N's value field |
-| `Ctrl`+`Shift`+`1`–`9` | Switch to profile N (first nine only) |
+| `Ctrl`+`Shift`+`0`–`9` | Switch to the default profile (`0`) or profile N (`1`–`9`, first nine only) |
 | `Esc` | Leave the focused field |
 
 Plain digit shortcuts are ignored while typing in a text field; the modifier combos above work from anywhere, including while a field is focused.

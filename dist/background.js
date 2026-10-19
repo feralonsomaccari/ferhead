@@ -13,12 +13,15 @@ const setIcon = (isAnyChecked) => {
     chrome.action.setIcon({ path: isAnyChecked ? ENABLED_ICONS : DISABLED_ICONS });
 };
 const syncIconFromStorage = () => {
-    chrome.storage.local.get(["profiles", "activeProfileId", "headerEntries", "checkboxes"], (result) => {
-        var _a, _b, _c;
+    chrome.storage.local.get(["profiles", "activeProfileId", "defaultProfile", "headerEntries", "checkboxes"], (result) => {
+        var _a, _b, _c, _d;
         if (Array.isArray(result.profiles)) {
             const profiles = result.profiles;
             const active = (_a = profiles.find((p) => p.id === result.activeProfileId)) !== null && _a !== void 0 ? _a : profiles[0];
-            setIcon(!!((_b = active === null || active === void 0 ? void 0 : active.headerEntries) === null || _b === void 0 ? void 0 : _b.some((entry) => entry === null || entry === void 0 ? void 0 : entry.checked)));
+            const defaultProfile = result.defaultProfile;
+            const activeChecked = !!((_b = active === null || active === void 0 ? void 0 : active.headerEntries) === null || _b === void 0 ? void 0 : _b.some((entry) => entry === null || entry === void 0 ? void 0 : entry.checked));
+            const defaultChecked = !!((_c = defaultProfile === null || defaultProfile === void 0 ? void 0 : defaultProfile.headerEntries) === null || _c === void 0 ? void 0 : _c.some((entry) => entry === null || entry === void 0 ? void 0 : entry.checked));
+            setIcon(activeChecked || defaultChecked);
             return;
         }
         if (Array.isArray(result.headerEntries)) {
@@ -26,7 +29,7 @@ const syncIconFromStorage = () => {
             setIcon(entries.some((entry) => entry === null || entry === void 0 ? void 0 : entry.checked));
             return;
         }
-        const checkboxes = (_c = result.checkboxes) !== null && _c !== void 0 ? _c : {};
+        const checkboxes = (_d = result.checkboxes) !== null && _d !== void 0 ? _d : {};
         setIcon(Object.keys(checkboxes).some((key) => { var _a; return (_a = checkboxes[key]) === null || _a === void 0 ? void 0 : _a.checked; }));
     });
 };

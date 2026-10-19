@@ -81,6 +81,11 @@ const DEFAULT_ROW_COUNT = 6;
 const MAX_SHORTCUT_ROW = 9;
 const PROFILE_COLORS = ["#37a1ce", "#cc7a5a", "#5bb98c", "#b06abf", "#d4b14a", "#5c7fe0"];
 
+// The default profile lives outside the numbered `profiles` array (see `StorageShape`)
+// so its reserved id and color never shift the numbered profiles' positions/palette.
+const DEFAULT_PROFILE_ID = 0;
+const DEFAULT_PROFILE_COLOR = "#d9a62e";
+
 const defaultHeaderEntries = (): HeaderEntry[] =>
   Array.from({ length: DEFAULT_ROW_COUNT }, (_, i) => ({
     id: i + 1,
@@ -112,26 +117,59 @@ type StorageShape = {
   activeProfileId: number;
   nextProfileId: number;
   nextRowId: number;
+  defaultProfile: Profile;
 };
+
+// A freshly created default profile starts with one empty row, consuming `rowId`
+// from whichever `nextRowId` counter was in play at the time.
+const freshDefaultProfile = (rowId: number): Profile => ({
+  id: DEFAULT_PROFILE_ID,
+  headerEntries: [{ id: rowId, checked: false, name: "", value: "" }],
+});
 
 const loadState = (): Promise<StorageShape> =>
   new Promise((resolve) => {
     chrome.storage.local.get(
-      ["profiles", "activeProfileId", "nextProfileId", "nextRowId", "headerEntries", "nextId", "checkboxes"],
+      [
+        "profiles",
+        "activeProfileId",
+        "nextProfileId",
+        "nextRowId",
+        "defaultProfile",
+        "headerEntries",
+        "nextId",
+        "checkboxes",
+      ],
       (result) => {
         if (Array.isArray(result.profiles)) {
-          resolve({
+          if (result.defaultProfile) {
+            resolve({
+              profiles: result.profiles,
+              activeProfileId: result.activeProfileId,
+              nextProfileId: result.nextProfileId,
+              nextRowId: result.nextRowId,
+              defaultProfile: result.defaultProfile,
+            });
+            return;
+          }
+
+          // Upgrading from the pre-default-profile shape: add an empty default
+          // profile without disturbing any existing profile/id-counter state.
+          const state: StorageShape = {
             profiles: result.profiles,
             activeProfileId: result.activeProfileId,
             nextProfileId: result.nextProfileId,
-            nextRowId: result.nextRowId,
-          });
+            nextRowId: result.nextRowId + 1,
+            defaultProfile: freshDefaultProfile(result.nextRowId),
+          };
+          chrome.storage.local.set(state);
+          resolve(state);
           return;
         }
 
         if (Array.isArray(result.headerEntries)) {
           const entries = result.headerEntries as HeaderEntry[];
-          const nextRowId =
+          const baseNextRowId =
             typeof result.nextId === "number"
               ? result.nextId
               : entries.reduce((max, e) => Math.max(max, e.id), 0) + 1;
@@ -139,7 +177,8 @@ const loadState = (): Promise<StorageShape> =>
             profiles: [{ id: 1, headerEntries: entries }],
             activeProfileId: 1,
             nextProfileId: 2,
-            nextRowId,
+            nextRowId: baseNextRowId + 1,
+            defaultProfile: freshDefaultProfile(baseNextRowId),
           };
           chrome.storage.local.set(state, () => {
             chrome.storage.local.remove(["headerEntries", "nextId"]);
@@ -150,12 +189,13 @@ const loadState = (): Promise<StorageShape> =>
 
         if (result.checkboxes && typeof result.checkboxes === "object") {
           const migrated = migrateOldCheckboxes(result.checkboxes);
-          const nextRowId = migrated.reduce((max, e) => Math.max(max, e.id), 0) + 1;
+          const baseNextRowId = migrated.reduce((max, e) => Math.max(max, e.id), 0) + 1;
           const state: StorageShape = {
             profiles: [{ id: 1, headerEntries: migrated }],
             activeProfileId: 1,
             nextProfileId: 2,
-            nextRowId,
+            nextRowId: baseNextRowId + 1,
+            defaultProfile: freshDefaultProfile(baseNextRowId),
           };
           chrome.storage.local.set(state, () => {
             chrome.storage.local.remove(["checkboxes", "headerEntries", "nextId"]);
@@ -164,11 +204,13 @@ const loadState = (): Promise<StorageShape> =>
           return;
         }
 
+        const defaultRowId = DEFAULT_ROW_COUNT + 1;
         const state: StorageShape = {
           profiles: [{ id: 1, headerEntries: defaultHeaderEntries() }],
           activeProfileId: 1,
           nextProfileId: 2,
-          nextRowId: DEFAULT_ROW_COUNT + 1,
+          nextRowId: defaultRowId + 1,
+          defaultProfile: freshDefaultProfile(defaultRowId),
         };
         chrome.storage.local.set(state);
         resolve(state);
@@ -176,10 +218,27 @@ const loadState = (): Promise<StorageShape> =>
     );
   });
 
+type RenderedRow = {
+  entry: HeaderEntry;
+  checkboxEl: HTMLInputElement;
+  nameEl: HTMLInputElement;
+  valueEl: HTMLInputElement;
+};
+
+type ProfileTileSpec = {
+  id: number;
+  label: string;
+  color: string;
+  isActive: boolean;
+  ariaLabel: string;
+  isDefault?: boolean;
+};
+
 document.addEventListener("DOMContentLoaded", async () => {
   const rowsContainer = document.querySelector<HTMLDivElement>("#headerRows");
   const template = document.querySelector<HTMLTemplateElement>("#header-row-template");
   const addButton = document.querySelector<HTMLButtonElement>("#addHeaderRow");
+  const defaultProfileSlot = document.querySelector<HTMLDivElement>("#defaultProfileSlot");
   const profileListContainer = document.querySelector<HTMLDivElement>("#profileList");
   const profileTemplate = document.querySelector<HTMLTemplateElement>("#profile-tile-template");
   const addProfileButton = document.querySelector<HTMLButtonElement>("#addProfile");
@@ -194,6 +253,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     !rowsContainer ||
     !template ||
     !addButton ||
+    !defaultProfileSlot ||
     !profileListContainer ||
     !profileTemplate ||
     !addProfileButton ||
@@ -210,25 +270,34 @@ document.addEventListener("DOMContentLoaded", async () => {
   let activeProfileId = 1;
   let nextProfileId = 1;
   let nextRowId = 1;
-  let renderedRows: Array<{
-    entry: HeaderEntry;
-    checkboxEl: HTMLInputElement;
-    nameEl: HTMLInputElement;
-    valueEl: HTMLInputElement;
-  }> = [];
+  let defaultProfile: Profile = { id: DEFAULT_PROFILE_ID, headerEntries: [] };
+  let renderedRows: RenderedRow[] = [];
 
-  const currentProfile = (): Profile => profiles.find((p) => p.id === activeProfileId)!;
+  const currentProfile = (): Profile =>
+    activeProfileId === DEFAULT_PROFILE_ID ? defaultProfile : profiles.find((p) => p.id === activeProfileId)!;
 
-  const isAnyChecked = () => currentProfile().headerEntries.some((entry) => entry.checked);
+  // The toolbar icon reflects whether anything is actually live on the wire (the
+  // default profile OR the viewed profile); the toggle-all button only cares
+  // about the profile currently being viewed. Keep these two deliberately separate.
+  const isDefaultProfileChecked = (): boolean => defaultProfile.headerEntries.some((entry) => entry.checked);
+  const isViewedProfileChecked = (): boolean => currentProfile().headerEntries.some((entry) => entry.checked);
+  const isAnyChecked = (): boolean => isDefaultProfileChecked() || isViewedProfileChecked();
 
   const persist = () => {
-    chrome.storage.local.set({ profiles, activeProfileId, nextProfileId, nextRowId });
+    chrome.storage.local.set({ profiles, activeProfileId, nextProfileId, nextRowId, defaultProfile });
   };
+
+  // The default profile's checked rows always ride along with whichever profile
+  // is active, since every row id is globally unique there's never a collision.
+  const entriesForRuleSync = (): HeaderEntry[] =>
+    activeProfileId === DEFAULT_PROFILE_ID
+      ? defaultProfile.headerEntries
+      : [...defaultProfile.headerEntries, ...currentProfile().headerEntries];
 
   const applyActiveProfile = () => {
     chrome.runtime.sendMessage({
       replaceAllRules: true,
-      entries: currentProfile().headerEntries,
+      entries: entriesForRuleSync(),
       isAnyChecked: isAnyChecked(),
     });
   };
@@ -236,7 +305,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const updateToggleAllButton = () => {
     const entries = currentProfile().headerEntries;
     toggleAllButton.disabled = entries.length === 0;
-    const anyChecked = entries.some((entry) => entry.checked);
+    const anyChecked = isViewedProfileChecked();
     toggleAllButton.classList.toggle("is-all-active", anyChecked);
     toggleAllButton.setAttribute(
       "aria-label",
@@ -244,54 +313,83 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
   };
 
-  const updateActiveProfileSwatch = () => {
-    const index = profiles.findIndex((p) => p.id === activeProfileId);
-    // Set on the document root (not just the swatch element) so it cascades
-    // down to the header rows too, tinting the checked-row accent border.
-    document.documentElement.style.setProperty("--profile-color", PROFILE_COLORS[index % PROFILE_COLORS.length]);
+  const updateDeleteProfileButton = () => {
+    const isDefault = activeProfileId === DEFAULT_PROFILE_ID;
+    deleteProfileButton.disabled = isDefault;
+    deleteProfileButton.title = isDefault ? "The default profile can't be deleted" : "Delete the active profile";
+    deleteProfileButton.setAttribute("aria-label", deleteProfileButton.title);
   };
 
-  const renderRows = () => {
-    rowsContainer.replaceChildren();
-    renderedRows = currentProfile().headerEntries.map((entry, index) => {
-      const fragment = template.content.cloneNode(true) as DocumentFragment;
-      const titleEl = fragment.querySelector<HTMLSpanElement>(".header-title");
-      const checkboxEl = fragment.querySelector<HTMLInputElement>('input[type="checkbox"]');
-      const nameEl = fragment.querySelector<HTMLInputElement>(".paramInput:not(.param-value)");
-      const valueEl = fragment.querySelector<HTMLInputElement>(".param-value");
-      const copyButton = fragment.querySelector<HTMLButtonElement>(".param-action-url");
-      const deleteButton = fragment.querySelector<HTMLButtonElement>(".param-action-delete");
+  const updateActiveProfileSwatch = () => {
+    const color =
+      activeProfileId === DEFAULT_PROFILE_ID
+        ? DEFAULT_PROFILE_COLOR
+        : PROFILE_COLORS[profiles.findIndex((p) => p.id === activeProfileId) % PROFILE_COLORS.length];
+    // Set on the document root (not just the swatch element) so it cascades
+    // down to the header rows too, tinting the checked-row accent border.
+    document.documentElement.style.setProperty("--profile-color", color);
+  };
 
-      if (!titleEl || !checkboxEl || !nameEl || !valueEl || !copyButton || !deleteButton) {
-        throw new Error("Header row template is missing an expected element.");
+  const wireHeaderRow = (entry: HeaderEntry, position: number): { row: DocumentFragment; descriptor: RenderedRow } => {
+    const fragment = template.content.cloneNode(true) as DocumentFragment;
+    const titleEl = fragment.querySelector<HTMLSpanElement>(".header-title");
+    const checkboxEl = fragment.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    const nameEl = fragment.querySelector<HTMLInputElement>(".paramInput:not(.param-value)");
+    const valueEl = fragment.querySelector<HTMLInputElement>(".param-value");
+    const copyButton = fragment.querySelector<HTMLButtonElement>(".param-action-url");
+    const deleteButton = fragment.querySelector<HTMLButtonElement>(".param-action-delete");
+
+    if (!titleEl || !checkboxEl || !nameEl || !valueEl || !copyButton || !deleteButton) {
+      throw new Error("Header row template is missing an expected element.");
+    }
+
+    titleEl.textContent = String(position);
+    titleEl.classList.toggle("header-title-first", position === 1);
+
+    checkboxEl.id = `headerCheckbox${entry.id}`;
+    checkboxEl.setAttribute("aria-label", `Enable header ${position}`);
+    checkboxEl.checked = entry.checked;
+
+    nameEl.id = `paramHeader-${entry.id}`;
+    nameEl.setAttribute("aria-label", `Header name ${position}`);
+    nameEl.value = entry.name;
+
+    valueEl.id = `paramValue-${entry.id}`;
+    valueEl.setAttribute("aria-label", `Header value ${position}`);
+    valueEl.value = entry.value;
+
+    copyButton.id = `paramCopyWithUrl-${entry.id}`;
+    copyButton.setAttribute("aria-label", `Copy tab URL with header ${position} as query param`);
+
+    deleteButton.id = `paramDelete-${entry.id}`;
+    deleteButton.setAttribute("aria-label", `Delete header ${position}`);
+
+    checkboxEl.addEventListener("change", () => {
+      entry.checked = checkboxEl.checked;
+      persist();
+      updateToggleAllButton();
+
+      if (entry.checked) {
+        chrome.runtime.sendMessage({
+          addHeader: true,
+          id: entry.id,
+          header: nameEl.value,
+          value: valueEl.value,
+          isAnyChecked: isAnyChecked(),
+        });
+      } else {
+        chrome.runtime.sendMessage({ addHeader: false, id: entry.id, isAnyChecked: isAnyChecked() });
       }
+    });
 
-      const position = index + 1;
-      titleEl.textContent = String(position);
-      titleEl.classList.toggle("header-title-first", index === 0);
-
-      checkboxEl.id = `headerCheckbox${entry.id}`;
-      checkboxEl.setAttribute("aria-label", `Enable header ${position}`);
-      checkboxEl.checked = entry.checked;
-
-      nameEl.id = `paramHeader-${entry.id}`;
-      nameEl.setAttribute("aria-label", `Header name ${position}`);
-      nameEl.value = entry.name;
-
-      valueEl.id = `paramValue-${entry.id}`;
-      valueEl.setAttribute("aria-label", `Header value ${position}`);
-      valueEl.value = entry.value;
-
-      copyButton.id = `paramCopyWithUrl-${entry.id}`;
-      copyButton.setAttribute("aria-label", `Copy tab URL with header ${position} as query param`);
-
-      deleteButton.id = `paramDelete-${entry.id}`;
-      deleteButton.setAttribute("aria-label", `Delete header ${position}`);
-
-      checkboxEl.addEventListener("change", () => {
-        entry.checked = checkboxEl.checked;
+    [nameEl, valueEl].forEach((input, inputIndex) => {
+      input.addEventListener("input", () => {
+        if (inputIndex === 0) {
+          entry.name = input.value;
+        } else {
+          entry.value = input.value;
+        }
         persist();
-        updateToggleAllButton();
 
         if (entry.checked) {
           chrome.runtime.sendMessage({
@@ -301,85 +399,91 @@ document.addEventListener("DOMContentLoaded", async () => {
             value: valueEl.value,
             isAnyChecked: isAnyChecked(),
           });
-        } else {
-          chrome.runtime.sendMessage({ addHeader: false, id: entry.id, isAnyChecked: isAnyChecked() });
         }
       });
+    });
 
-      [nameEl, valueEl].forEach((input, inputIndex) => {
-        input.addEventListener("input", () => {
-          if (inputIndex === 0) {
-            entry.name = input.value;
-          } else {
-            entry.value = input.value;
-          }
-          persist();
-
-          if (entry.checked) {
-            chrome.runtime.sendMessage({
-              addHeader: true,
-              id: entry.id,
-              header: nameEl.value,
-              value: valueEl.value,
-              isAnyChecked: isAnyChecked(),
-            });
-          }
-        });
+    copyButton.addEventListener("click", () => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const activeTab = tabs[0];
+        if (!activeTab || !activeTab.url) {
+          console.error("Unable to retrieve the active tab's URL");
+          flash(copyButton, "is-error");
+          return;
+        }
+        const url = new URL(activeTab.url);
+        url.searchParams.set(nameEl.value, valueEl.value);
+        const fullUrl = url.toString();
+        copyToClipboard(fullUrl, copyButton);
       });
+    });
 
-      copyButton.addEventListener("click", () => {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          const activeTab = tabs[0];
-          if (!activeTab || !activeTab.url) {
-            console.error("Unable to retrieve the active tab's URL");
-            flash(copyButton, "is-error");
-            return;
-          }
-          const url = new URL(activeTab.url);
-          url.searchParams.set(nameEl.value, valueEl.value);
-          const fullUrl = url.toString();
-          copyToClipboard(fullUrl, copyButton);
-        });
-      });
+    deleteButton.addEventListener("click", () => {
+      currentProfile().headerEntries = currentProfile().headerEntries.filter((e) => e.id !== entry.id);
+      persist();
+      chrome.runtime.sendMessage({ addHeader: false, id: entry.id, isAnyChecked: isAnyChecked() });
+      renderRows();
+    });
 
-      deleteButton.addEventListener("click", () => {
-        currentProfile().headerEntries = currentProfile().headerEntries.filter((e) => e.id !== entry.id);
-        persist();
-        chrome.runtime.sendMessage({ addHeader: false, id: entry.id, isAnyChecked: isAnyChecked() });
-        renderRows();
-      });
+    return { row: fragment, descriptor: { entry, checkboxEl, nameEl, valueEl } };
+  };
 
-      rowsContainer.appendChild(fragment);
-
-      return { entry, checkboxEl, nameEl, valueEl };
+  const renderRows = () => {
+    rowsContainer.replaceChildren();
+    renderedRows = currentProfile().headerEntries.map((entry, index) => {
+      const { row, descriptor } = wireHeaderRow(entry, index + 1);
+      rowsContainer.appendChild(row);
+      return descriptor;
     });
 
     updateToggleAllButton();
+    updateDeleteProfileButton();
+  };
+
+  const renderProfileTile = (container: HTMLElement, spec: ProfileTileSpec) => {
+    const fragment = profileTemplate.content.cloneNode(true) as DocumentFragment;
+    const tile = fragment.querySelector<HTMLDivElement>(".profile-tile");
+    const numberEl = fragment.querySelector<HTMLSpanElement>(".profile-number");
+
+    if (!tile || !numberEl) {
+      throw new Error("Profile tile template is missing an expected element.");
+    }
+
+    tile.style.setProperty("--profile-color", spec.color);
+    tile.classList.toggle("is-active", spec.isActive);
+    tile.classList.toggle("profile-tile--default", !!spec.isDefault);
+    numberEl.textContent = spec.label;
+    tile.setAttribute("aria-label", spec.ariaLabel);
+    tile.title = spec.ariaLabel;
+
+    tile.addEventListener("click", () => {
+      switchProfile(spec.id);
+    });
+
+    container.appendChild(fragment);
   };
 
   const renderProfiles = () => {
+    defaultProfileSlot.replaceChildren();
+    renderProfileTile(defaultProfileSlot, {
+      id: DEFAULT_PROFILE_ID,
+      label: "*",
+      color: DEFAULT_PROFILE_COLOR,
+      isActive: activeProfileId === DEFAULT_PROFILE_ID,
+      ariaLabel: "Default profile — its checked headers apply to every profile",
+      isDefault: true,
+    });
+
     profileListContainer.replaceChildren();
-
     profiles.forEach((profile, index) => {
-      const fragment = profileTemplate.content.cloneNode(true) as DocumentFragment;
-      const tile = fragment.querySelector<HTMLDivElement>(".profile-tile");
-      const numberEl = fragment.querySelector<HTMLSpanElement>(".profile-number");
-
-      if (!tile || !numberEl) {
-        throw new Error("Profile tile template is missing an expected element.");
-      }
-
       const position = index + 1;
-      tile.style.setProperty("--profile-color", PROFILE_COLORS[index % PROFILE_COLORS.length]);
-      tile.classList.toggle("is-active", profile.id === activeProfileId);
-      numberEl.textContent = String(position);
-      tile.setAttribute("aria-label", `Switch to profile ${position}`);
-
-      tile.addEventListener("click", () => {
-        switchProfile(profile.id);
+      renderProfileTile(profileListContainer, {
+        id: profile.id,
+        label: String(position),
+        color: PROFILE_COLORS[index % PROFILE_COLORS.length],
+        isActive: profile.id === activeProfileId,
+        ariaLabel: `Switch to profile ${position}`,
       });
-
-      profileListContainer.appendChild(fragment);
     });
 
     updateActiveProfileSwatch();
@@ -395,6 +499,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   const deleteActiveProfile = () => {
+    if (activeProfileId === DEFAULT_PROFILE_ID) {
+      flash(deleteProfileButton, "is-error");
+      return;
+    }
+
     if (profiles.length === 1) {
       flash(deleteProfileButton, "is-error");
       return;
@@ -408,7 +517,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderProfiles();
   };
 
-  ({ profiles, activeProfileId, nextProfileId, nextRowId } = await loadState());
+  ({ profiles, activeProfileId, nextProfileId, nextRowId, defaultProfile } = await loadState());
   renderRows();
   renderProfiles();
 
@@ -442,7 +551,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   toggleAllButton.addEventListener("click", () => {
     const entries = currentProfile().headerEntries;
-    const nextChecked = !isAnyChecked();
+    const nextChecked = !isViewedProfileChecked();
     entries.forEach((entry) => {
       entry.checked = nextChecked;
     });
@@ -454,66 +563,75 @@ document.addEventListener("DOMContentLoaded", async () => {
     updateToggleAllButton();
   });
 
-  document.addEventListener("keydown", (event) => {
+  const tryHandleEscape = (event: KeyboardEvent): boolean => {
     const activeElement = document.activeElement;
+    if (!(event.key === "Escape" && activeElement instanceof HTMLInputElement)) return false;
+
+    if (activeElement.selectionStart !== activeElement.selectionEnd) {
+      activeElement.setSelectionRange(activeElement.selectionStart, activeElement.selectionStart);
+    }
+
+    activeElement.blur();
+    event.preventDefault();
+    return true;
+  };
+
+  // Ctrl+Shift+0 switches to the default profile, Ctrl+Shift+1-9 to the Nth
+  // numbered profile. Plain Alt/Option+N doesn't reach here reliably on macOS
+  // (the OS consumes it to type accented/symbol characters), so this uses a
+  // two-modifier combo that's free on both platforms, distinct from
+  // Ctrl-alone/Shift-alone below.
+  const tryHandleProfileSwitchShortcut = (event: KeyboardEvent): boolean => {
+    if (!(event.ctrlKey && event.shiftKey && /^Digit[0-9]$/.test(event.code))) return false;
+    event.preventDefault();
+
+    const digit = parseInt(event.code.replace("Digit", ""), 10);
+    const targetId = digit === 0 ? DEFAULT_PROFILE_ID : profiles[digit - 1]?.id;
+    if (targetId === undefined) return true;
+
+    switchProfile(targetId);
+    return true;
+  };
+
+  // Shift+N selects row N's value, Ctrl+N its header name. Both select the
+  // whole field so the next keystroke replaces it.
+  const tryHandleFieldSelectShortcut = (event: KeyboardEvent): boolean => {
+    if (!((event.shiftKey || event.ctrlKey) && /^Digit[1-9]$/.test(event.code))) return false;
+    event.preventDefault();
+
+    const position = parseInt(event.code.replace("Digit", ""), 10);
+    const row = renderedRows[position - 1];
+    if (!row) return true;
+    const target = event.shiftKey ? row.valueEl : row.nameEl;
+
+    target.focus();
+    target.select();
+    return true;
+  };
+
+  // Typing inside a field is text entry, never a checkbox toggle.
+  const isTypingInTextField = (): boolean => {
+    const activeElement = document.activeElement;
+    return activeElement instanceof HTMLInputElement && activeElement.type === "text";
+  };
+
+  const tryHandleRowToggleShortcut = (event: KeyboardEvent): boolean => {
     const key = parseInt(event.key, 10);
+    if (!(key >= 1 && key <= MAX_SHORTCUT_ROW && key <= renderedRows.length)) return false;
 
-    if (event.key === "Escape" && activeElement instanceof HTMLInputElement) {
-      if (activeElement.selectionStart !== activeElement.selectionEnd) {
-        activeElement.setSelectionRange(
-          activeElement.selectionStart,
-          activeElement.selectionStart,
-        );
-      }
+    const row = renderedRows[key - 1];
+    if (!row) return false;
+    row.checkboxEl.checked = !row.checkboxEl.checked;
+    row.checkboxEl.dispatchEvent(new Event("change"));
+    return true;
+  };
 
-      activeElement.blur();
-      event.preventDefault();
-    }
-
-    // Ctrl+Shift+N switches to the Nth profile. Plain Alt/Option+N doesn't reach
-    // here reliably on macOS (the OS consumes it to type accented/symbol
-    // characters), so this uses a two-modifier combo that's free on both
-    // platforms, distinct from Ctrl-alone/Shift-alone below.
-    if (event.ctrlKey && event.shiftKey && /^Digit[1-9]$/.test(event.code)) {
-      event.preventDefault();
-
-      const position = parseInt(event.code.replace("Digit", ""), 10);
-      const profile = profiles[position - 1];
-      if (!profile) return;
-
-      switchProfile(profile.id);
-      return;
-    }
-
-    // Shift+N selects row N's value, Ctrl+N its header name. Both select the
-    // whole field so the next keystroke replaces it.
-    if ((event.shiftKey || event.ctrlKey) && /^Digit[1-9]$/.test(event.code)) {
-      event.preventDefault();
-
-      const position = parseInt(event.code.replace("Digit", ""), 10);
-      const row = renderedRows[position - 1];
-      if (!row) return;
-      const target = event.shiftKey ? row.valueEl : row.nameEl;
-
-      target.focus();
-      target.select();
-      return;
-    }
-
-    // Typing inside a field is text entry, never a checkbox toggle.
-    if (
-      activeElement instanceof HTMLInputElement &&
-      activeElement.type === "text"
-    ) {
-      return;
-    }
-
-    if (key >= 1 && key <= MAX_SHORTCUT_ROW && key <= renderedRows.length) {
-      const row = renderedRows[key - 1];
-      if (!row) return;
-      row.checkboxEl.checked = !row.checkboxEl.checked;
-      row.checkboxEl.dispatchEvent(new Event("change"));
-    }
+  document.addEventListener("keydown", (event) => {
+    if (tryHandleEscape(event)) return;
+    if (tryHandleProfileSwitchShortcut(event)) return;
+    if (tryHandleFieldSelectShortcut(event)) return;
+    if (isTypingInTextField()) return;
+    tryHandleRowToggleShortcut(event);
   });
 
   const readServoContext = (tabId: number): Promise<string | null> =>

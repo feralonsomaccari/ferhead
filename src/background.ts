@@ -15,24 +15,29 @@ const setIcon = (isAnyChecked: boolean) => {
 };
 
 const syncIconFromStorage = () => {
-  chrome.storage.local.get(["profiles", "activeProfileId", "headerEntries", "checkboxes"], (result) => {
-    if (Array.isArray(result.profiles)) {
-      const profiles: Array<{ id: number; headerEntries: Array<{ checked?: boolean }> }> = result.profiles;
-      const active = profiles.find((p) => p.id === result.activeProfileId) ?? profiles[0];
-      setIcon(!!active?.headerEntries?.some((entry) => entry?.checked));
-      return;
-    }
+  chrome.storage.local.get(
+    ["profiles", "activeProfileId", "defaultProfile", "headerEntries", "checkboxes"],
+    (result) => {
+      if (Array.isArray(result.profiles)) {
+        const profiles: Array<{ id: number; headerEntries: Array<{ checked?: boolean }> }> = result.profiles;
+        const active = profiles.find((p) => p.id === result.activeProfileId) ?? profiles[0];
+        const defaultProfile: { headerEntries?: Array<{ checked?: boolean }> } | undefined = result.defaultProfile;
+        const activeChecked = !!active?.headerEntries?.some((entry) => entry?.checked);
+        const defaultChecked = !!defaultProfile?.headerEntries?.some((entry) => entry?.checked);
+        setIcon(activeChecked || defaultChecked);
+        return;
+      }
 
-    if (Array.isArray(result.headerEntries)) {
-      const entries: Array<{ checked?: boolean }> = result.headerEntries;
-      setIcon(entries.some((entry) => entry?.checked));
-      return;
-    }
+      if (Array.isArray(result.headerEntries)) {
+        const entries: Array<{ checked?: boolean }> = result.headerEntries;
+        setIcon(entries.some((entry) => entry?.checked));
+        return;
+      }
 
-    const checkboxes: Record<string, { checked: boolean } | undefined> =
-      result.checkboxes ?? {};
-    setIcon(Object.keys(checkboxes).some((key) => checkboxes[key]?.checked));
-  });
+      const checkboxes: Record<string, { checked: boolean } | undefined> = result.checkboxes ?? {};
+      setIcon(Object.keys(checkboxes).some((key) => checkboxes[key]?.checked));
+    },
+  );
 };
 
 chrome.runtime.onStartup.addListener(syncIconFromStorage);
