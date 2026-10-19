@@ -1,77 +1,184 @@
 <!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mod Headers</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mod Headers</title>
-  <link rel="stylesheet" href="./styles.css" />
-</head>
+  <body>
+    <h1>Mod Headers</h1>
 
-<body>
-  <h1>Mod Headers</h1>
+    <div class="layout">
+      <nav class="profile-rail" id="profileRail">
+        <button
+          class="param-action param-action-add"
+          id="addProfile"
+          title="Add a new profile"
+          aria-label="Add a new profile"
+        >
+          <svg
+            class="icon"
+            viewBox="0 0 16 16"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <use href="assets/icons/sprite.svg#icon-add"></use>
+          </svg>
+        </button>
+        <div id="defaultProfileSlot" class="default-profile-slot"></div>
+        <div id="profileList" class="profile-list"></div>
+      </nav>
 
-  <div class="layout">
-    <nav class="profile-rail" id="profileRail">
-      <button class="param-action param-action-add" id="addProfile" title="Add a new profile"
-        aria-label="Add a new profile"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-add"></use></svg></button>
-      <div id="defaultProfileSlot" class="default-profile-slot"></div>
-      <div id="profileList" class="profile-list"></div>
-    </nav>
+      <div class="main-column">
+        <div class="top-bar" id="topBar">
+          <button
+            class="param-action param-action-add"
+            id="addHeaderRow"
+            title="Add a new header row"
+            aria-label="Add a new header row"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <use href="assets/icons/sprite.svg#icon-add"></use>
+            </svg>
+          </button>
+          <button
+            class="param-action param-action-toggle-all"
+            id="toggleAllHeaders"
+            title="Activate/deactivate all headers in this profile"
+          >
+            <svg
+              class="icon icon-activate"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <use href="assets/icons/sprite.svg#icon-toggle-on"></use></svg
+            ><svg
+              class="icon icon-deactivate"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <use href="assets/icons/sprite.svg#icon-toggle-off"></use>
+            </svg>
+          </button>
+          <button
+            class="param-action param-action-delete"
+            id="deleteProfile"
+            title="Delete the active profile"
+            aria-label="Delete the active profile"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <use href="assets/icons/sprite.svg#icon-delete"></use>
+            </svg>
+          </button>
+          <span
+            class="active-profile-swatch"
+            id="activeProfileSwatch"
+            aria-hidden="true"
+          ></span>
+        </div>
 
-    <div class="main-column">
-      <div class="top-bar" id="topBar">
-        <button class="param-action param-action-add" id="addHeaderRow" title="Add a new header row"
-          aria-label="Add a new header row"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-add"></use></svg></button>
-        <button class="param-action param-action-toggle-all" id="toggleAllHeaders"
-          title="Activate/deactivate all headers in this profile"><svg class="icon icon-activate" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-toggle-on"></use></svg><svg class="icon icon-deactivate" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-toggle-off"></use></svg></button>
-        <button class="param-action param-action-delete" id="deleteProfile" title="Delete the active profile"
-          aria-label="Delete the active profile"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-delete"></use></svg></button>
-        <span class="active-profile-swatch" id="activeProfileSwatch" aria-hidden="true"></span>
+        <div id="headerRows"></div>
       </div>
-
-      <div id="headerRows"></div>
     </div>
-  </div>
 
-  <template id="header-row-template">
-    <div class="header-wrapper">
-      <span class="header-title"></span>
-      <input type="checkbox" />
-      <div class="param-container">
-        <input type="text" placeholder="X-Header-Name" class="paramInput" />
-        <input type="text" placeholder="value" class="paramInput param-value" />
-        <button class="param-action param-action-url"
-          title="Copy this tab's URL with the header added as a query param"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-copy"></use></svg></button>
-        <button class="param-action param-action-delete" title="Delete this row"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-delete"></use></svg></button>
+    <template id="header-row-template">
+      <div class="header-wrapper">
+        <span class="header-title"></span>
+        <input type="checkbox" />
+        <div class="param-container">
+          <input type="text" placeholder="X-Header-Name" class="paramInput" />
+          <input
+            type="text"
+            placeholder="value"
+            class="paramInput param-value"
+          />
+          <button
+            class="param-action param-action-url"
+            title="Copy this tab's URL with the header added as a query param"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <use href="assets/icons/sprite.svg#icon-copy"></use>
+            </svg>
+          </button>
+          <button
+            class="param-action param-action-delete"
+            title="Delete this row"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 16 16"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <use href="assets/icons/sprite.svg#icon-delete"></use>
+            </svg>
+          </button>
+        </div>
       </div>
-    </div>
-  </template>
+    </template>
 
-  <template id="profile-tile-template">
-    <div class="profile-tile">
-      <span class="profile-number"></span>
-    </div>
-  </template>
+    <template id="profile-tile-template">
+      <div class="profile-tile">
+        <span class="profile-number"></span>
+      </div>
+    </template>
 
-  <footer class="legend">
-    <div class="legend-servo">
-      <button class="param-action param-action-servo servo-open" id="servoOpen"
-        title="Open this tab's stack in Servo (reads the servo-context meta tag, or falls back to the URL)">Open on
-        Servo</button>
-      <span>Reads the page's <code>servo-context</code>, else <code>pr-&lt;number&gt;</code> from the URL</span>
-    </div>
-    <dl class="legend-keys">
-      <dt class="legend-key"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#icon-copy"></use></svg></dt>
-      <dd>Copy this tab's URL with the header added as a query param</dd>
-    </dl>
-    <p class="legend-shortcuts">
-      <kbd>1</kbd>–<kbd>9</kbd> toggle a row (first nine only) · <kbd>Ctrl</kbd>+<kbd>1</kbd>–<kbd>9</kbd> select the header name · <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>9</kbd> select the value<br />
-      <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>0</kbd>–<kbd>9</kbd> switch profile (<kbd>0</kbd> = default, <kbd>1</kbd>–<kbd>9</kbd> = first nine numbered) · <kbd>Esc</kbd> leave a field
-    </p>
-  </footer>
+    <footer class="legend">
+      <div class="legend-servo">
+        <button
+          class="param-action param-action-servo servo-open"
+          id="servoOpen"
+          title="Open this tab's stack in Servo (reads the servo-context meta tag, or falls back to the URL)"
+        >
+          Open on Servo
+        </button>
+        <span
+          >Reads the page's <code>servo-context</code>, else
+          <code>pr-&lt;number&gt;</code> from the URL</span
+        >
+      </div>
+      <dl class="legend-keys">
+        <dt class="legend-key">
+          <svg
+            class="icon"
+            viewBox="0 0 16 16"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <use href="assets/icons/sprite.svg#icon-copy"></use>
+          </svg>
+        </dt>
+        <dd>Copy this tab's URL with the header added as a query param</dd>
+      </dl>
+      <p class="legend-shortcuts">
+        <kbd>1</kbd>–<kbd>9</kbd> toggle a row (first nine only) ·
+        <kbd>Ctrl</kbd>+<kbd>1</kbd>–<kbd>9</kbd> select the header name ·
+        <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>9</kbd> select the value <br /><br />
+        <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>0</kbd>–<kbd>9</kbd> switch
+        profile (<kbd>0</kbd> = default, <kbd>1</kbd>–<kbd>9</kbd> = first nine
+        numbered) · <kbd>Esc</kbd> leave a field
+      </p>
+    </footer>
 
-  <script src="/dist/popup.js" defer></script>
-</body>
-
+    <script src="/dist/popup.js" defer></script>
+  </body>
 </html>

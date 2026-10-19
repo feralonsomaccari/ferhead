@@ -388,7 +388,7 @@ input[type="checkbox"]:focus {
 }
 
 .legend-shortcuts {
-  margin: 8px 0 0;
+  margin: 8px 0 8px 0;
   white-space: nowrap;
 }
 
