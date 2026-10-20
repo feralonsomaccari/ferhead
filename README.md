@@ -95,3 +95,7 @@ A button that opens the current tab's corresponding Servo stack. It first looks 
 npm install
 npm run build   # compiles src/*.ts into dist/*.js
 ```
+
+## License
+
+MIT. See [LICENSE](LICENSE).
